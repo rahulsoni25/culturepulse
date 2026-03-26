@@ -1,0 +1,10 @@
+{
+  "name": "culturepulse",
+  "version": "1.0.0",
+  "description": "CulturePulse — Brand Culture Intelligence Dashboard for Creative Professionals",
+  "private": true,
+  "scripts": {
+    "deploy": "vercel --prod",
+    "preview": "vercel"
+  }
+}

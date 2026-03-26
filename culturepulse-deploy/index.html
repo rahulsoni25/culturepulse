@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CulturePulse · Brand Culture Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#07080d;--bg2:#0d0f18;--bg3:#111420;--bg4:#171a28;
+  --b1:#1e2235;--b2:#252840;
+  --t1:#e8eaf2;--t2:#8b90a8;--t3:#4a4f68;
+  --blue:#3d7fff;--bdim:#1a2a4a;
+  --green:#1db87a;--gdim:#0d2a1e;
+  --amber:#f0a830;--adim:#2a1f0a;
+  --red:#e8453c;--rdim:#2a0d0c;
+  --purple:#8b6fff;--pdim:#1a1530;
+  --teal:#1dc8c8;
+  --fm:'Syne',sans-serif;--mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+/* NAV */
+.nav{display:flex;justify-content:space-between;align-items:center;padding:12px 24px;border-bottom:1px solid var(--b1);background:var(--bg);position:sticky;top:0;z-index:100;gap:12px}
+.nav-brand{display:flex;align-items:center;gap:10px}
+.nlogo{width:30px;height:30px;background:var(--blue);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;font-family:var(--mono)}
+.ntitle{font-size:15px;font-weight:800;letter-spacing:-.03em}
+.nbeta{font-size:9px;background:var(--bdim);color:var(--blue);padding:2px 6px;border-radius:4px;font-family:var(--mono);letter-spacing:.06em;margin-left:6px}
+.nsub{font-size:10px;color:var(--t3);font-family:var(--mono);letter-spacing:.05em;margin-top:1px}
+.nav-right{display:flex;align-items:center;gap:10px}
+.live-pill{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--green);font-family:var(--mono);background:var(--gdim);padding:3px 10px;border-radius:999px}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* CREDITS BADGE */
+.credits-badge{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--b1);border-radius:8px;padding:5px 12px}
+.cr-label{font-family:var(--mono);font-size:10px;color:var(--t3)}
+.cr-val{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--amber)}
+.cr-bar-wrap{width:60px;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.cr-bar{height:100%;border-radius:2px;background:var(--amber);transition:width .4s ease}
+.cr-upgrade{font-family:var(--mono);font-size:9px;color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* MODE TOGGLE */
+.mode-toggle{display:flex;background:var(--bg2);border:1px solid var(--b1);border-radius:8px;padding:3px;gap:2px}
+.mode-btn{padding:5px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--t3);cursor:pointer;border-radius:6px;border:none;background:transparent;transition:all .15s}
+.mode-btn.active{background:var(--bg3);color:var(--t1);border:1px solid var(--b2)}
+
+/* NAV TABS */
+.nav-tabs{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--b1);border-radius:8px;padding:3px}
+.ntab{padding:5px 12px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--t3);cursor:pointer;border-radius:5px;border:none;background:transparent;transition:all .15s;white-space:nowrap}
+.ntab:hover{color:var(--t2)}
+.ntab.active{background:var(--bg3);color:var(--t1);border:1px solid var(--b2)}
+
+.main{padding:16px 24px;max-width:1400px;margin:0 auto}
+.sec{margin-bottom:24px}
+.ey{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.11em;color:var(--t3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.ey::after{content:'';flex:1;height:1px;background:var(--b1)}
+.div{border:none;border-top:1px solid var(--b1);margin:20px 0}
+
+/* NOVICE BANNER */
+.novice-banner{background:linear-gradient(135deg,var(--bdim),var(--pdim));border:1px solid var(--blue);border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:14px}
+.nb-icon{width:36px;height:36px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.nb-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.nb-body{font-size:12px;color:var(--t2);line-height:1.6}
+.nb-steps{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.nb-step{background:var(--bg3);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--t2);flex:1;min-width:120px}
+.nb-step-n{font-family:var(--mono);font-size:9px;color:var(--blue);margin-bottom:3px}
+.nb-step-t{font-size:12px;font-weight:600;color:var(--t1);margin-bottom:2px}
+
+/* CREDIT MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--bg2);border:1px solid var(--b2);border-radius:16px;padding:28px;width:500px;max-width:90vw}
+.modal-title{font-size:18px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--t2);margin-bottom:20px}
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.plan{background:var(--bg3);border:1px solid var(--b1);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s}
+.plan:hover{border-color:var(--b2)}
+.plan.featured{border-color:var(--blue)}
+.plan-name{font-size:12px;font-weight:700;margin-bottom:4px}
+.plan-price{font-size:22px;font-weight:800;letter-spacing:-.03em;margin-bottom:2px}
+.plan-credits{font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:8px}
+.plan-feat{font-size:11px;color:var(--t2);line-height:1.6}
+.plan-badge{font-family:var(--mono);font-size:9px;background:var(--bdim);color:var(--blue);padding:2px 7px;border-radius:4px;margin-bottom:8px;display:inline-block}
+.modal-close{font-family:var(--mono);font-size:11px;color:var(--t3);cursor:pointer;text-align:center;margin-top:8px;padding:6px}
+.modal-close:hover{color:var(--t2)}
+
+/* FILTER BAR */
+.fbar{background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:14px 18px;margin-bottom:16px}
+.frow{display:grid;gap:10px;margin-bottom:10px}
+.frow7{grid-template-columns:repeat(7,minmax(0,1fr))}
+.frow5{grid-template-columns:repeat(4,minmax(0,1fr)) auto}
+.fg label{display:block;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:4px}
+.fg select,.fg input{width:100%;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);font-size:11px;font-family:var(--mono);padding:7px 10px;border-radius:7px;cursor:pointer;appearance:none}
+.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%234a4f68'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.fg select:focus,.fg input:focus{outline:none;border-color:var(--blue)}
+.abtn{background:var(--blue);color:#fff;border:none;border-radius:7px;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;cursor:pointer;padding:0 18px;text-transform:uppercase;height:33px;align-self:end;transition:background .15s;position:relative}
+.abtn:hover{background:#5590ff}
+.abtn-cost{position:absolute;top:-8px;right:-4px;background:var(--amber);color:#000;font-size:8px;padding:1px 5px;border-radius:999px;font-family:var(--mono)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--b1)}
+.pill{font-family:var(--mono);font-size:10px;color:var(--t2);background:var(--bg3);border:1px solid var(--b1);border-radius:999px;padding:3px 10px}
+
+/* ALERTS */
+.alert-banner{display:flex;align-items:center;gap:12px;background:var(--rdim);border:1px solid var(--red);border-radius:10px;padding:11px 16px;margin-bottom:12px;animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.alert-text{font-size:12px;line-height:1.5;flex:1}
+.alert-text strong{color:var(--red)}
+.alert-dismiss{font-family:var(--mono);font-size:9px;color:var(--red);cursor:pointer;padding:2px 8px;border:1px solid var(--red);border-radius:5px;background:transparent;opacity:.7}
+.alert-dismiss:hover{opacity:1}
+
+/* KPI STRIP */
+.kstrip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.ks{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:13px 15px;position:relative;overflow:hidden;cursor:pointer;transition:all .15s}
+.ks::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kblue::before{background:var(--blue)}.kgreen::before{background:var(--green)}
+.kamber::before{background:var(--amber)}.kred::before{background:var(--red)}.kpurple::before{background:var(--purple)}
+.ks:hover,.ks.active{background:var(--bg3);border-color:var(--b2)}
+.ks.active{border-color:var(--blue)}
+.ks-label{font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.ks-val{font-size:22px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.ks-sub{font-size:11px;color:var(--t2);margin-top:3px;line-height:1.4}
+.ks-delta{font-family:var(--mono);font-size:10px;font-weight:500;margin-top:4px}
+.up{color:var(--green)}.dn{color:var(--red)}.nt{color:var(--t3)}
+
+/* GOOGLE TRENDS PANEL */
+.gtrends-panel{background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:16px 20px;margin-bottom:16px}
+.gt-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.gt-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.gt-badge{font-family:var(--mono);font-size:9px;background:#4285f422;color:#4285f4;padding:2px 8px;border-radius:4px;border:1px solid #4285f444}
+.gt-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.gt-card{background:var(--bg3);border:1px solid var(--b1);border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .12s}
+.gt-card:hover{border-color:var(--b2)}
+.gt-card.rising{border-color:#4285f4}
+.gt-query{font-size:12px;font-weight:600;margin-bottom:2px}
+.gt-category{font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:6px}
+.gt-lift{display:flex;align-items:center;gap:6px}
+.gt-lift-val{font-family:var(--mono);font-size:13px;font-weight:600;color:#4285f4}
+.gt-bar{flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.gt-bar-fill{height:100%;border-radius:2px;background:#4285f4}
+.gt-signal{font-size:10px;color:var(--t3);margin-top:5px}
+.gt-signal span{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bdim);color:var(--blue)}
+
+/* SIGNAL TABLE */
+.sig-table{width:100%;border-collapse:collapse}
+.sig-table th{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:8px 12px;text-align:left;border-bottom:1px solid var(--b1);white-space:nowrap;cursor:pointer;user-select:none}
+.sig-table th:hover{color:var(--t2)}
+.sig-table th.sorted{color:var(--blue)}
+.sig-table td{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--b1);vertical-align:middle}
+.sig-table tr:hover td{background:var(--bg3)}
+.sig-table tr.hl td{background:var(--bdim)}
+.stag{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;letter-spacing:.04em;white-space:nowrap}
+.tag-b{background:var(--bdim);color:var(--blue)}.tag-p{background:var(--pdim);color:var(--purple)}
+.tag-drop{background:var(--rdim);color:var(--red)}.tag-rising{background:var(--gdim);color:var(--green)}.tag-stable{background:var(--bg4);color:var(--t3)}
+.mini-bar-wrap{width:70px;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle}
+.mini-bar{height:100%;border-radius:2px}
+.src-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
+.pager{display:flex;align-items:center;gap:8px;margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--t3)}
+.pbtn{padding:4px 10px;border:1px solid var(--b1);border-radius:5px;cursor:pointer;background:var(--bg3);color:var(--t2);font-family:var(--mono);font-size:10px}
+.pbtn:hover{border-color:var(--b2);color:var(--t1)}
+.pbtn:disabled{opacity:.3;cursor:default}
+
+/* NOVICE SIGNAL CARDS */
+.novice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.novice-card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .12s}
+.novice-card:hover{background:var(--bg3);border-color:var(--b2)}
+.novice-card.hot{border-color:var(--red)}.novice-card.warm{border-color:var(--amber)}.novice-card.cool{border-color:var(--green)}
+.nc-emoji{font-size:20px;margin-bottom:8px}
+.nc-headline{font-size:14px;font-weight:700;margin-bottom:4px}
+.nc-explain{font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:10px}
+.nc-action{font-size:12px;font-weight:600;color:var(--blue);padding-top:8px;border-top:1px solid var(--b1)}
+.nc-stats{display:flex;gap:12px;margin-bottom:8px}
+.nc-stat{display:flex;flex-direction:column;gap:1px}
+.nc-stat-l{font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.nc-stat-v{font-size:14px;font-weight:700}
+
+/* DROP CARDS */
+.drop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.drop-card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .12s;position:relative;overflow:hidden}
+.drop-card:hover{background:var(--bg3)}
+.drop-card.hot{border-color:var(--red)}.drop-card.warm{border-color:var(--amber)}.drop-card.rising{border-color:var(--green)}
+.drop-heat{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:4px}
+.dc-signal{font-size:13px;font-weight:600;margin-bottom:3px}
+.dc-why{font-size:11px;color:var(--t2);line-height:1.4;margin-bottom:8px}
+.dc-stats{display:flex;gap:12px}
+.dc-stat-l{font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase}
+.dc-stat-v{font-size:14px;font-weight:700}
+
+/* FIT */
+.fit-score-big{font-size:48px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.fit-bar-wrap{height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin:10px 0}
+.fit-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* TENSION */
+.tension-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tension-card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .12s}
+.tension-card:hover{background:var(--bg3)}.tension-card.active{border-color:var(--purple)}
+.tc-t{font-size:13px;font-weight:600;margin-bottom:4px}
+.tc-i{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:8px}
+.tc-brief{font-size:11px;color:var(--t3);font-style:italic;border-top:1px solid var(--b1);padding-top:6px;margin-top:4px}
+.tc-brief.active{color:var(--purple)}
+
+/* REPORT */
+.report-block{background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:16px 20px;margin-bottom:10px}
+.rb-title{font-size:14px;font-weight:700;margin-bottom:12px}
+.rb-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--b1);align-items:flex-start}
+.rb-row:last-child{border-bottom:none}
+.rb-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.rb-label{font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;min-width:120px;flex-shrink:0;margin-top:2px}
+.rb-content{font-size:12px;color:var(--t2);line-height:1.6}
+.rb-content strong{color:var(--t1);font-weight:600}
+
+/* HOW TO READ */
+.htr-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.htr-card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px}
+.htr-n{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--blue);margin-bottom:6px}
+.htr-t{font-size:13px;font-weight:600;margin-bottom:4px}
+.htr-b{font-size:12px;color:var(--t2);line-height:1.6}
+.htr-eg{font-family:var(--mono);font-size:10px;background:var(--bg3);border:1px solid var(--b1);border-radius:6px;padding:6px 10px;margin-top:8px;color:var(--t2)}
+.htr-eg strong{color:var(--t1)}
+
+/* CHAT */
+.chat{display:flex;flex-direction:column;gap:10px}
+.cm{display:flex;gap:9px;align-items:flex-start}
+.cm.u{flex-direction:row-reverse}
+.av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;font-family:var(--mono)}
+.av-a{background:var(--bdim);color:var(--blue)}.av-u{background:var(--pdim);color:var(--purple)}
+.bub{max-width:85%;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.65;background:var(--bg3);border:1px solid var(--b1);color:var(--t1)}
+.bub strong{font-weight:600}.bub em{color:var(--t2);font-style:normal}
+.it{display:inline-block;font-size:10px;padding:1px 7px;border-radius:4px;margin:1px;font-family:var(--mono)}
+.itg{background:var(--gdim);color:var(--green)}.itr{background:var(--rdim);color:var(--red)}
+.itn{background:var(--bg4);color:var(--t2)}.itb{background:var(--bdim);color:var(--blue)}
+
+/* GRID */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mc{background:var(--bg3);border-radius:8px;padding:11px 13px}
+.mcl{font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.07em}
+.mcv{font-size:18px;font-weight:700;letter-spacing:-.02em}
+.mcs{font-size:11px;color:var(--t2);margin-top:2px}
+.cw{position:relative;width:100%}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.act{padding:8px 16px;font-size:11px;font-weight:500;border-radius:8px;cursor:pointer;border:1px solid var(--b2);background:var(--bg3);color:var(--t1);font-family:var(--mono);letter-spacing:.04em;transition:all .12s}
+.act:hover{background:var(--bg4);border-color:var(--blue);color:var(--blue)}
+.act.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.act.primary:hover{background:#5590ff}
+.act.success{background:var(--gdim);border-color:var(--green);color:var(--green)}
+.drill{background:var(--bg2);border:1px solid var(--b2);border-radius:12px;padding:18px 20px;margin-top:10px;animation:sd .15s ease}
+@keyframes sd{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+.dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.dt{font-size:14px;font-weight:600}
+.dcl{font-family:var(--mono);font-size:10px;color:var(--t3);cursor:pointer;padding:4px 10px;border:1px solid var(--b1);border-radius:6px;background:var(--bg3)}
+.dcl:hover{color:var(--t1);border-color:var(--b2)}
+.loading{display:flex;align-items:center;gap:8px;color:var(--t3);font-family:var(--mono);font-size:11px;padding:20px 0}
+.spin{width:14px;height:14px;border:2px solid var(--b2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- CREDIT MODAL -->
+<div class="modal-bg" id="credit-modal" style="display:none">
+<div class="modal">
+  <div class="modal-title">Upgrade CulturePulse</div>
+  <div class="modal-sub">Each analysis run costs credits. Choose a plan to keep the insights flowing.</div>
+  <div class="plan-grid">
+    <div class="plan">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">Free</div>
+      <div class="plan-credits">50 credits / month</div>
+      <div class="plan-feat">5 signal runs · Basic drops · Culture fit only</div>
+    </div>
+    <div class="plan featured">
+      <div class="plan-badge">Most popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">$49<span style="font-size:14px;font-weight:400">/mo</span></div>
+      <div class="plan-credits">500 credits / month</div>
+      <div class="plan-feat">Unlimited runs · All tabs · Google Trends feed · Export PDF · 3 brands</div>
+    </div>
+    <div class="plan">
+      <div class="plan-name">Agency</div>
+      <div class="plan-price">$199<span style="font-size:14px;font-weight:400">/mo</span></div>
+      <div class="plan-credits">2,000 credits / month</div>
+      <div class="plan-feat">Unlimited brands · API access · White-label · Team seats · Priority support</div>
+    </div>
+  </div>
+  <div class="modal-close" onclick="closeModal()">Continue with free plan (50 credits remaining)</div>
+</div>
+</div>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nlogo">CP</div>
+    <div>
+      <div style="display:flex;align-items:center">
+        <div class="ntitle">CulturePulse</div>
+        <span class="nbeta">BETA</span>
+      </div>
+      <div class="nsub">Brand Culture Intelligence · For Creative Professionals</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="mode-novice" onclick="setMode('novice')">Simple</button>
+      <button class="mode-btn" id="mode-pro" onclick="setMode('pro')">Pro</button>
+    </div>
+    <div class="nav-tabs">
+      <button class="ntab active" onclick="switchTab('signals')">Signal Feed</button>
+      <button class="ntab" onclick="switchTab('drops')">Culture Drops</button>
+      <button class="ntab" onclick="switchTab('fit')">Culture Fit</button>
+      <button class="ntab" onclick="switchTab('tensions')">Tensions</button>
+      <button class="ntab" onclick="switchTab('howto')">How to Read</button>
+      <button class="ntab" onclick="switchTab('report')">Pulse Report</button>
+    </div>
+    <div class="credits-badge">
+      <div>
+        <div class="cr-label">Credits</div>
+        <div class="cr-val" id="cr-val">42</div>
+      </div>
+      <div>
+        <div class="cr-bar-wrap"><div class="cr-bar" id="cr-bar" style="width:84%"></div></div>
+        <div class="cr-upgrade" onclick="showModal()">Upgrade ↗</div>
+      </div>
+    </div>
+    <div class="live-pill"><div class="ldot"></div>Live feed</div>
+  </div>
+</nav>
+
+<div class="main">
+
+<!-- FILTERS -->
+<div class="fbar">
+  <div class="frow frow7">
+    <div class="fg"><label>Brand</label>
+      <select id="fbrand"><option value="tuborg">Tuborg</option><option value="heineken">Heineken</option><option value="kingfisher">Kingfisher</option><option value="custom">Custom</option></select></div>
+    <div class="fg"><label>Age group</label>
+      <select id="fage"><option value="0">16–22 · Late Gen Z</option><option value="1">21–34 · Core Gen Z+</option><option value="2">25–40 · Millennial</option></select></div>
+    <div class="fg"><label>City reach</label>
+      <select id="fcity"><option value="0">Metro + T1 + T2</option><option value="1">Metro only</option><option value="2">T1 + T2 only</option></select></div>
+    <div class="fg"><label>Signal lens</label>
+      <select id="flens"><option value="0">All signals</option><option value="1">Music + festivals</option><option value="2">Gaming + tech</option><option value="3">Food + lifestyle</option><option value="4">Fashion + identity</option></select></div>
+    <div class="fg"><label>Time window</label>
+      <select id="ftime"><option value="0">Last 24 hours</option><option value="1">Last 3 days</option><option value="2">Last 7 days</option><option value="3">Last 30 days</option></select></div>
+    <div class="fg"><label>Drop threshold</label>
+      <select id="fdrop"><option value="0">Any signal</option><option value="1">2× + lift</option><option value="2">3× + lift</option><option value="3">5× + major</option></select></div>
+    <div class="fg"><label>Min confidence</label>
+      <select id="fconf"><option value="0">All</option><option value="1">≥ 70%</option><option value="2">≥ 85%</option><option value="3">≥ 90%</option></select></div>
+  </div>
+  <div class="frow frow5">
+    <div class="fg"><label>Google Trends category</label>
+      <select id="fgt"><option value="0">Entertainment</option><option value="1">Music + Artists</option><option value="2">Sports</option><option value="3">Food + Drink</option><option value="4">Fashion + Style</option><option value="5">Gaming</option></select></div>
+    <div class="fg"><label>Territory filter</label>
+      <select id="fterr"><option value="0">All territories</option><option value="1">Owned by brand</option><option value="2">Contested</option><option value="3">Gap / unclaimed</option></select></div>
+    <div class="fg"><label>Signal type</label>
+      <select id="ftype"><option value="0">All types</option><option value="1">Behaviour only</option><option value="2">Feeling only</option></select></div>
+    <div class="fg"><label>Demographics</label>
+      <select id="fdemo"><option value="0">Skew male 60/40</option><option value="1">Balanced 50/50</option><option value="2">Skew female 60/40</option></select></div>
+    <button class="abtn" onclick="go()">Run analysis ›<span class="abtn-cost">-2 cr</span></button>
+  </div>
+  <div class="pills" id="pills"></div>
+</div>
+
+<div id="alerts"></div>
+<div class="kstrip" id="kstrip"></div>
+<div id="gtrends-section"></div>
+
+<div id="tab-signals"></div>
+<div id="tab-drops" style="display:none"></div>
+<div id="tab-fit" style="display:none"></div>
+<div id="tab-tensions" style="display:none"></div>
+<div id="tab-howto" style="display:none"></div>
+<div id="tab-report" style="display:none"></div>
+</div>
+
+<script>
+/* ── GLOBAL STATE ── */
+var credits = 42;
+var mode = "novice";
+var currentTab = "signals";
+var SIGS = [];
+var sigPage = 0;
+var sigSort = {col:"score",dir:-1};
+var openDrop = null;
+var openTension = null;
+var charts = {};
+
+/* ── GOOGLE TRENDS DATA (simulated from real categories) ── */
+var GT_CATEGORIES = {
+  0: [ /* Entertainment */
+    {query:"Lollapalooza Mumbai 2026",  cat:"Music Events",    lift:89, signal:"festivals",        city:"Mumbai"},
+    {query:"Sunburn festival tickets",  cat:"Music Events",    lift:76, signal:"festivals",        city:"Pune"},
+    {query:"DIVINE new song",          cat:"Music Artists",   lift:68, signal:"music_streaming",  city:"BLR"},
+    {query:"NH7 Weekender lineup",     cat:"Music Events",    lift:61, signal:"festivals",        city:"Pune"},
+    {query:"King rapper concert",      cat:"Music Artists",   lift:55, signal:"music_streaming",  city:"Delhi"},
+    {query:"underground music scene",  cat:"Music Discovery", lift:48, signal:"cultural_explorer", city:"BLR"},
+    {query:"house party playlist",     cat:"Lifestyle",       lift:42, signal:"late_night_out",   city:"Mumbai"},
+    {query:"music festival camping",   cat:"Travel",          lift:38, signal:"travel_weekend",   city:"BLR"}
+  ],
+  1: [ /* Music */
+    {query:"DIVINE Kohinoor lyrics",   cat:"Hip Hop",         lift:92, signal:"music_streaming",  city:"Mumbai"},
+    {query:"Badshah new album",        cat:"Pop",             lift:78, signal:"music_streaming",  city:"Delhi"},
+    {query:"Spotify India charts",     cat:"Streaming",       lift:65, signal:"music_streaming",  city:"BLR"},
+    {query:"Tamil rap underground",    cat:"Regional",        lift:58, signal:"cultural_explorer", city:"Chennai"},
+    {query:"midnight playlist vibes",  cat:"Mood",            lift:52, signal:"escapist_micro",   city:"Pune"},
+    {query:"festival stage India",     cat:"Events",          lift:47, signal:"festivals",        city:"Mumbai"},
+    {query:"music artist collab drop", cat:"Artists",         lift:44, signal:"music_streaming",  city:"BLR"},
+    {query:"Spotify wrapped reveal",   cat:"Streaming",       lift:39, signal:"digital_expresser", city:"Delhi"}
+  ],
+  2: [ /* Sports */
+    {query:"IPL 2026 tickets",         cat:"Cricket",         lift:95, signal:"cricket_watching",  city:"Mumbai"},
+    {query:"cricket watch party BLR",  cat:"Cricket",         lift:82, signal:"cricket_watching",  city:"BLR"},
+    {query:"India World Cup squad",    cat:"Cricket",         lift:74, signal:"group_socialiser",  city:"Delhi"},
+    {query:"fantasy cricket app",      cat:"Gaming",          lift:66, signal:"gaming_mobile",     city:"Pune"},
+    {query:"sports bar near me",       cat:"Lifestyle",       lift:57, signal:"cricket_watching",  city:"Mumbai"},
+    {query:"cricket jersey India",     cat:"Fashion",         lift:49, signal:"social_identity",   city:"BLR"},
+    {query:"football Premier League",  cat:"Football",        lift:44, signal:"group_socialiser",  city:"Mumbai"},
+    {query:"marathon India 2026",      cat:"Fitness",         lift:36, signal:"experience_maximiser",city:"Delhi"}
+  ],
+  3: [ /* Food */
+    {query:"Swiggy midnight delivery", cat:"Delivery",        lift:88, signal:"food_delivery",    city:"Mumbai"},
+    {query:"Zomato 2am order",         cat:"Delivery",        lift:79, signal:"food_delivery",    city:"BLR"},
+    {query:"late night food Mumbai",   cat:"Local Food",      lift:67, signal:"late_night_out",   city:"Mumbai"},
+    {query:"food truck festival",      cat:"Events",          lift:59, signal:"festivals",        city:"Pune"},
+    {query:"ramen spot BLR",           cat:"Restaurants",     lift:51, signal:"cultural_explorer", city:"BLR"},
+    {query:"biryani home delivery",    cat:"Delivery",        lift:46, signal:"food_delivery",    city:"Hyderabad"},
+    {query:"rooftop bar Delhi",        cat:"Nightlife",       lift:42, signal:"late_night_out",   city:"Delhi"},
+    {query:"meal prep Gen Z",          cat:"Health",          lift:35, signal:"experience_maximiser",city:"BLR"}
+  ],
+  4: [ /* Fashion */
+    {query:"sneaker drop India",       cat:"Sneakers",        lift:91, signal:"fashion_sneakers",  city:"Mumbai"},
+    {query:"Nike Jordan India release",cat:"Sneakers",        lift:84, signal:"fashion_sneakers",  city:"Delhi"},
+    {query:"thrift store BLR",         cat:"Vintage",         lift:72, signal:"social_identity",   city:"BLR"},
+    {query:"outfit reel trending",     cat:"Content",         lift:63, signal:"digital_expresser", city:"Mumbai"},
+    {query:"streetwear India brand",   cat:"Streetwear",      lift:55, signal:"social_identity",   city:"Mumbai"},
+    {query:"fashion week India 2026",  cat:"Events",          lift:48, signal:"experience_maximiser",city:"Delhi"},
+    {query:"vintage clothing haul",    cat:"Vintage",         lift:43, signal:"cultural_explorer", city:"BLR"},
+    {query:"outfit of the day reel",   cat:"Content",         lift:38, signal:"digital_expresser", city:"Pune"}
+  ],
+  5: [ /* Gaming */
+    {query:"BGMI tournament 2026",     cat:"Mobile Gaming",   lift:93, signal:"gaming_mobile",    city:"BLR"},
+    {query:"Free Fire India server",   cat:"Mobile Gaming",   lift:81, signal:"gaming_mobile",    city:"Pune"},
+    {query:"gaming setup room India",  cat:"Gaming Lifestyle",lift:69, signal:"digital_expresser", city:"Mumbai"},
+    {query:"esports career India",     cat:"Esports",         lift:62, signal:"experience_maximiser",city:"Delhi"},
+    {query:"gaming cafe near me",      cat:"Local",           lift:54, signal:"group_socialiser",  city:"BLR"},
+    {query:"gaming headset budget",    cat:"Hardware",        lift:47, signal:"gaming_mobile",    city:"Pune"},
+    {query:"PC gaming vs console",     cat:"Hardware",        lift:41, signal:"gaming_mobile",    city:"Mumbai"},
+    {query:"midnight gaming session",  cat:"Lifestyle",       lift:36, signal:"escapist_micro",   city:"BLR"}
+  ]
+};
+
+/* ── SIGNAL META ── */
+var SIG_META = {
+  music_streaming:        {label:"Streaming music",        t:"b",territory:"owned",    tension:"Social identity through taste",      dir:"Someone sharing a song, not a party. The moment before the crowd.",opp:"Drop a Tuborg playlist before festival season. Partner with rising artists."},
+  gaming_mobile:          {label:"Mobile gaming",          t:"b",territory:"gap",      tension:"Escapism without leaving home",       dir:"Two people, small room, late night. Controllers and a Tuborg on the table.",opp:"The 10pm gaming + food delivery combo is a Tuborg moment. Own that ritual."},
+  food_delivery:          {label:"Late-night food delivery",t:"b",territory:"gap",      tension:"Rewarding yourself after the grind", dir:"The delivery sound. A Tuborg opens. The day is over.",opp:"Tuborg x food platform bundle. Open a Tuborg, order in."},
+  festivals:              {label:"Festival culture",       t:"b",territory:"contested",tension:"FOMO vs genuine experience",          dir:"Not the crowd. The moment just before the lights go down.",opp:"Own the 90-min pre-headliner window. Tier 2 presence is the biggest white space."},
+  travel_weekend:         {label:"Weekend travel",         t:"b",territory:"contested",tension:"Escape vs FOMO",                      dir:"Last-minute train to somewhere with people you like.",opp:"Festival + weekend trip crossover content."},
+  fashion_sneakers:       {label:"Sneaker + streetwear",   t:"b",territory:"gap",      tension:"Identity signalling through objects", dir:"The unboxing. Not the shoe.",opp:"Limited Tuborg collab drops. The brand as cultural artefact."},
+  cricket_watching:       {label:"Cricket viewing parties",t:"b",territory:"contested",tension:"Collective belonging",               dir:"The room. The roar. Not the stadium.",opp:"Be the brand at the watch party, not the ad break."},
+  late_night_out:         {label:"Late-night socialising", t:"b",territory:"owned",    tension:"Permission to stay out",             dir:"The last round. The moment someone says 'one more'.",opp:"Own the late-night ritual. The last Tuborg of the night."},
+  escapist_micro:         {label:"Micro-escape moments",   t:"p",territory:"contested",tension:"Performance pressure vs relief",      dir:"No crowd. No filter. Just quiet.",opp:"Show Tuborg as the switch-off. Not a party — the first moment of stillness."},
+  experience_maximiser:   {label:"Experience maximising",  t:"p",territory:"owned",    tension:"Doing more vs being present",        dir:"The story that makes them feel like insiders.",opp:"FOMO activations and exclusive drops. This cohort amplifies for you."},
+  social_identity:        {label:"Identity through brand", t:"p",territory:"gap",      tension:"Standing out vs fitting in",         dir:"Real people. Not aspirational.",opp:"Creator seeding. Peer-to-peer over broadcast."},
+  digital_expresser:      {label:"Digital self-expression",t:"p",territory:"gap",      tension:"Curated self vs real self",          dir:"Make something they would actually post.",opp:"Aesthetic IS the message. Visually distinctive formats."},
+  group_socialiser:       {label:"Group socialising",      t:"p",territory:"owned",    tension:"Belonging vs individuality",         dir:"The friend group ritual.",opp:"Own the group moment. Not the individual."},
+  cultural_explorer:      {label:"Cultural exploration",   t:"p",territory:"contested",tension:"Discovery vs comfort",              dir:"Finding the thing before everyone else does.",opp:"Discovery content. Artist before they blow up."}
+};
+
+var BV = {music_streaming:.71,festivals:.64,escapist_micro:.50,experience_maximiser:.45,gaming_mobile:.10,food_delivery:.08,social_identity:.12,digital_expresser:.15,late_night_out:.80,cricket_watching:.30,group_socialiser:.60,travel_weekend:.20,fashion_sneakers:.05,cultural_explorer:.35};
+var FIT_H = [[41,44,43,47,50,54,58],[35,37,40,38,42,45,49],[55,57,56,60,62,64,66],[44,46,48,50,52,56,61],[40,43,45,44,48,51,55]];
+var WEEKS = ["6w ago","5w ago","4w ago","3w ago","2w ago","Last w","Now"];
+var SOURCES = [
+  {id:"google",    label:"Google Trends",    col:"#4285f4"},
+  {id:"instagram", label:"Instagram",        col:"#e1306c"},
+  {id:"youtube",   label:"YouTube",          col:"#ff0000"},
+  {id:"spotify",   label:"Spotify",          col:"#1db954"},
+  {id:"twitter",   label:"X / Twitter",      col:"#1da1f2"},
+  {id:"onground",  label:"On-ground intel",  col:"#f0a830"}
+];
+
+/* ── HELPERS ── */
+function iv(id){return document.getElementById(id)?document.getElementById(id).value:"0";}
+function rnd(a,b){return Math.random()*(b-a)+a;}
+function rndI(a,b){return Math.floor(rnd(a,b+1));}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function killChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function mkLine(id,labels,data,col){
+  killChart(id);var ctx=document.getElementById(id);if(!ctx)return;
+  charts[id]=new Chart(ctx,{type:"line",data:{labels:labels,datasets:[{data:data,borderColor:col,backgroundColor:col+"22",fill:true,tension:.4,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4a4f68",font:{size:9}},grid:{color:"rgba(255,255,255,.04)"}},y:{ticks:{color:"#4a4f68",font:{size:9}},grid:{color:"rgba(255,255,255,.04)"}}}}});
+}
+
+function mkBar(id,labels,data,cols){
+  killChart(id);var ctx=document.getElementById(id);if(!ctx)return;
+  var bc=cols||"#3d7fff";
+  var bgarr=Array.isArray(bc)?bc:labels.map(function(){return bc+"66";});
+  var bdarr=Array.isArray(bc)?bc:labels.map(function(){return bc;});
+  charts[id]=new Chart(ctx,{type:"bar",data:{labels:labels,datasets:[{data:data,backgroundColor:bgarr,borderColor:bdarr,borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4a4f68",font:{size:9}},grid:{display:false}},y:{ticks:{color:"#4a4f68",font:{size:9}},grid:{color:"rgba(255,255,255,.04)"}}}}});
+}
+
+/* ── CREDIT SYSTEM ── */
+function showModal(){document.getElementById("credit-modal").style.display="flex";}
+function closeModal(){document.getElementById("credit-modal").style.display="none";}
+
+function spendCredit(n){
+  credits=Math.max(0,credits-n);
+  document.getElementById("cr-val").textContent=credits;
+  document.getElementById("cr-bar").style.width=Math.round(credits/50*100)+"%";
+  if(credits<10){
+    document.getElementById("cr-val").style.color="var(--red)";
+    document.getElementById("cr-bar").style.background="var(--red)";
+  }
+  if(credits===0) setTimeout(showModal,500);
+}
+
+/* ── SIGNAL GENERATION ── */
+function generateSignals(){
+  var all=[];
+  var lens=parseInt(iv("flens"));
+  var conf_min=[0,.7,.85,.9][parseInt(iv("fconf"))];
+  var type_f=parseInt(iv("ftype"));
+  var drop_min=[0,2,3,5][parseInt(iv("fdrop"))];
+  var terr_f=parseInt(iv("fterr"));
+  var cities=[["Mumbai","BLR","Delhi","Pune","Surat"],["Mumbai","BLR","Delhi"],["Pune","Surat","Jaipur"]][parseInt(iv("fcity"))%3];
+  var ages=[["16–19","19–22","20–24","22–26","26–30","28–34"]][0];
+  var lens_w={
+    0:{music_streaming:1,gaming_mobile:1,food_delivery:1,festivals:1,travel_weekend:1,fashion_sneakers:1,cricket_watching:1,late_night_out:1,escapist_micro:1,experience_maximiser:1,social_identity:1,digital_expresser:1,group_socialiser:1,cultural_explorer:1},
+    1:{music_streaming:3,festivals:2.5,experience_maximiser:1.5,escapist_micro:1.2,cultural_explorer:1.5,gaming_mobile:.4,food_delivery:.5,cricket_watching:.6,fashion_sneakers:.7,social_identity:1.2,digital_expresser:1.3,group_socialiser:1,travel_weekend:.8,late_night_out:1.2},
+    2:{gaming_mobile:3,escapist_micro:2.5,digital_expresser:1.5,food_delivery:1.8,social_identity:1.2,music_streaming:.8,festivals:.5,travel_weekend:.6,fashion_sneakers:.9,cricket_watching:.5,experience_maximiser:.8,group_socialiser:.7,cultural_explorer:.8,late_night_out:1.4},
+    3:{food_delivery:3,late_night_out:2.5,group_socialiser:2,escapist_micro:1.5,cricket_watching:1.2,gaming_mobile:1.2,music_streaming:.8,festivals:.7,travel_weekend:.9,fashion_sneakers:.7,experience_maximiser:1,social_identity:.9,digital_expresser:.8,cultural_explorer:.7},
+    4:{fashion_sneakers:3,digital_expresser:2.5,social_identity:2,cultural_explorer:1.5,music_streaming:1.2,festivals:.8,gaming_mobile:.6,food_delivery:.7,travel_weekend:.8,cricket_watching:.5,experience_maximiser:1.2,escapist_micro:1,group_socialiser:.9,late_night_out:1}
+  };
+  var raw_pool=["late night scroll after deadline","streaming discovery binge solo","gaming session after work no thoughts","festival crowd energy electric","rooftop last round with crew","food delivery at 2am ritual","sneaker drop campout early","cricket watch party loud house","weekend escape last minute","reel identity curated aesthetic","micro break 20min just breathe","new artist found before hype","friend group going out tonight","searching something new to feel"];
+  var sig_keys=Object.keys(SIG_META);
+  var lw=lens_w[lens]||lens_w[0];
+
+  /* Inject Google Trends signals */
+  var gt_data=GT_CATEGORIES[parseInt(iv("fgt"))]||GT_CATEGORIES[0];
+  gt_data.forEach(function(gt,idx){
+    var meta=SIG_META[gt.signal];
+    if(!meta) return;
+    if(type_f===1&&meta.t!=="b") return;
+    if(type_f===2&&meta.t!=="p") return;
+    var conf=rnd(.8,.97);
+    if(conf<conf_min) return;
+    var lift=gt.lift/20+rnd(.5,1.5);
+    var novelty=rnd(.4,.9);
+    var score=Math.sqrt(lift)*Math.pow(novelty,.6);
+    all.push({
+      id:idx,raw:"[Google Trends] "+gt.query+" — "+gt.city,
+      signal:gt.signal,label:meta.label,type:meta.t,
+      territory:meta.territory,tension:meta.tension,
+      confidence:conf,lift:lift,novelty:novelty,score:score,
+      source:SOURCES[0],city:gt.city,age_sub:pick(ages),
+      hours_ago:rndI(0,48),is_drop:lift>=2,brand_impact:BV[gt.signal]||0,
+      from_trends:true,gt_query:gt.query,gt_lift:gt.lift
+    });
+  });
+
+  /* Generate organic signals */
+  for(var k=0;k<90;k++){
+    var sk=pick(sig_keys);
+    var w=lw[sk]||1;
+    if(Math.random()>w/3) sk=pick(sig_keys);
+    var m=SIG_META[sk]; if(!m) continue;
+    if(type_f===1&&m.t!=="b") continue;
+    if(type_f===2&&m.t!=="p") continue;
+    var conf2=rnd(.55,.97); if(conf2<conf_min) continue;
+    var lift2=rnd(1.1,5.8);
+    var nov2=rnd(.08,.92);
+    var sc2=Math.sqrt(lift2)*Math.pow(nov2,.6);
+    var src=pick(SOURCES);
+    var city2=pick(cities);
+    var raw2=pick(raw_pool).replace("Mumbai",city2);
+    var terr=m.territory;
+    if(terr_f===1&&terr!=="owned") continue;
+    if(terr_f===2&&terr!=="contested") continue;
+    if(terr_f===3&&terr!=="gap") continue;
+    all.push({
+      id:100+k,raw:raw2,signal:sk,label:m.label,type:m.t,
+      territory:terr,tension:m.tension,
+      confidence:conf2,lift:lift2,novelty:nov2,score:sc2,
+      source:src,city:city2,age_sub:pick(ages),
+      hours_ago:rndI(0,[24,72,168,720][parseInt(iv("ftime"))%4]),
+      is_drop:lift2>=drop_min&&nov2>.35&&lift2>=2,
+      brand_impact:BV[sk]||0,from_trends:false
+    });
+  }
+  return all.sort(function(a,b){return b.score-a.score;});
+}
+
+/* ── MAIN ── */
+function go(){
+  if(credits<=0){showModal();return;}
+  spendCredit(2);
+  SIGS=generateSignals();
+  sigPage=0;
+  renderAll();
+}
+
+function setMode(m){
+  mode=m;
+  ["novice","pro"].forEach(function(x){
+    document.getElementById("mode-"+x).className="mode-btn"+(x===m?" active":"");
+  });
+  renderTab(currentTab);
+}
+
+function switchTab(t){
+  currentTab=t;
+  ["signals","drops","fit","tensions","howto","report"].forEach(function(x){
+    document.getElementById("tab-"+x).style.display=x===t?"":"none";
+    var btn=document.querySelector('.ntab[onclick="switchTab(\''+x+'\')"]');
+    if(btn) btn.className="ntab"+(x===t?" active":"");
+  });
+  renderTab(t);
+}
+
+function renderAll(){
+  renderPills();renderAlerts();renderKPIs();renderGTrends();renderTab(currentTab);
+}
+
+function renderPills(){
+  var bname={tuborg:"Tuborg",heineken:"Heineken",kingfisher:"Kingfisher",custom:"Custom"}[iv("fbrand")]||"Tuborg";
+  var data=[bname,["16–22 Late Gen Z","21–34 Core Gen Z+","25–40 Millennial"][parseInt(iv("fage"))%3],["Metro + T1 + T2","Metro only","T1 + T2 only"][parseInt(iv("fcity"))%3],["All signals","Music","Gaming","Food","Fashion"][parseInt(iv("flens"))%5],["24h","3d","7d","30d"][parseInt(iv("ftime"))%4]];
+  document.getElementById("pills").innerHTML=data.map(function(x){return '<span class="pill">'+x+'</span>';}).join("");
+}
+
+function renderAlerts(){
+  var drops=SIGS.filter(function(s){return s.is_drop&&s.lift>=4;});
+  if(!drops.length){document.getElementById("alerts").innerHTML="";return;}
+  var top=drops[0];
+  document.getElementById("alerts").innerHTML='<div class="alert-banner"><div class="alert-text"><strong>Culture Drop Alert:</strong> "'+top.label+'" is spiking '+top.lift.toFixed(1)+'× in '+top.city+'. '+drops.length+' high-priority drop'+(drops.length>1?"s":"")+" detected — brief window is now. <strong>Tab: Culture Drops</strong></div><button class=\"alert-dismiss\" onclick=\"this.parentNode.remove()\">Dismiss</button></div>";
+}
+
+function renderKPIs(){
+  var S=SIGS; if(!S.length){document.getElementById("kstrip").innerHTML="";return;}
+  var drops=S.filter(function(s){return s.is_drop;});
+  var topSig=S[0];
+  var avgConf=S.reduce(function(a,b){return a+b.confidence;},0)/S.length;
+  var l=parseInt(iv("flens"))%5;
+  var fitNow=FIT_H[l][6],fitD=fitNow-FIT_H[l][5];
+  var fitCol=fitNow>=70?"#1db87a":fitNow>=50?"#f0a830":"#e8453c";
+  var kpis=[
+    {cls:"kblue",  label:"Signals captured",val:S.length,             sub:"classified by AI",             delta:drops.length+" drops detected",dup:drops.length>0},
+    {cls:"kred",   label:"Culture drops",   val:drops.length,          sub:"spiking above baseline",       delta:drops.length>0?drops[0].label:"—",dup:drops.length>0},
+    {cls:"kamber", label:"Top signal lift", val:topSig.lift.toFixed(1)+"×",sub:topSig.label,              delta:"priority score "+topSig.score.toFixed(2),dup:topSig.lift>2},
+    {cls:"kgreen", label:"Culture fit",     val:fitNow+"%",            sub:"brand vs audience",            delta:(fitD>=0?"+":"")+fitD+"pp vs last week",dup:fitD>=0},
+    {cls:"kpurple",label:"Google Trends",   val:S.filter(function(s){return s.from_trends;}).length,sub:"rising queries injected",delta:"from Trends category",dup:true}
+  ];
+  document.getElementById("kstrip").innerHTML=kpis.map(function(k,i){
+    var dc=k.dup?"up":"dn";
+    var tabs=["signals","drops","signals","fit","signals"];
+    return '<div class="ks '+k.cls+'" onclick="switchTab(\''+tabs[i]+'\')">'+'<div class="ks-label">'+k.label+'</div><div class="ks-val">'+k.val+'</div><div class="ks-sub">'+k.sub+'</div><div class="ks-delta '+dc+'">'+k.delta+'</div></div>';
+  }).join("");
+}
+
+function renderGTrends(){
+  var cat=parseInt(iv("fgt"));
+  var data=(GT_CATEGORIES[cat]||GT_CATEGORIES[0]).slice(0,8);
+  var cards=data.map(function(gt){
+    var meta=SIG_META[gt.signal];
+    var sig_label=meta?meta.label:"—";
+    var pct=Math.round(gt.lift);
+    return '<div class="gt-card '+(gt.lift>70?"rising":"")+'">'+
+      '<div class="gt-query">'+gt.query+'</div>'+
+      '<div class="gt-category">'+gt.cat+' · '+gt.city+'</div>'+
+      '<div class="gt-lift">'+
+        '<div class="gt-lift-val">+'+gt.lift+'%</div>'+
+        '<div class="gt-bar"><div class="gt-bar-fill" style="width:'+Math.min(100,pct)+'%"></div></div>'+
+      '</div>'+
+      '<div class="gt-signal">Maps to: <span>'+sig_label+'</span></div>'+
+    '</div>';
+  }).join("");
+  document.getElementById("gtrends-section").innerHTML=
+    '<div class="gtrends-panel">'+
+      '<div class="gt-header">'+
+        '<div class="gt-title"><div class="src-dot" style="background:#4285f4;width:10px;height:10px;border-radius:50%;display:inline-block"></div> Google Trends · Rising queries <span class="gt-badge">Live feed</span></div>'+
+        '<span style="font-family:var(--mono);font-size:10px;color:var(--t3)">Category: '+["Entertainment","Music + Artists","Sports","Food + Drink","Fashion + Style","Gaming"][parseInt(iv("fgt"))]+'</span>'+
+      '</div>'+
+      '<div class="gt-grid">'+cards+'</div>'+
+      '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:10px">Each rising query is classified by Claude into the signal taxonomy and injected into the signal feed. This is how Google search behaviour becomes cultural intelligence.</div>'+
+    '</div>';
+}
+
+/* ── TAB RENDERERS ── */
+function renderTab(t){
+  if(t==="signals")  renderSignals();
+  else if(t==="drops")    renderDrops();
+  else if(t==="fit")      renderFit();
+  else if(t==="tensions") renderTensions();
+  else if(t==="howto")    renderHowTo();
+  else if(t==="report")   renderReport();
+}
+
+/* SIGNALS TAB */
+function renderSignals(){
+  var el=document.getElementById("tab-signals");
+  if(!SIGS.length){el.innerHTML='<div class="loading"><div class="spin"></div>Click "Run analysis" to start.</div>';return;}
+
+  if(mode==="novice"){
+    renderNoviceSignals(el); return;
+  }
+
+  var sorted=SIGS.slice().sort(function(a,b){
+    var d=sigSort.dir;
+    var av=a[sigSort.col],bv=b[sigSort.col];
+    if(typeof av==="string") return d*(av<bv?-1:av>bv?1:0);
+    return d*(bv-av);
+  });
+  var pp=20,totalP=Math.ceil(sorted.length/pp);
+  var page_data=sorted.slice(sigPage*pp,(sigPage+1)*pp);
+
+  function th(col,lbl){
+    var arrow=sigSort.col===col?(sigSort.dir===-1?" ↓":" ↑"):"";
+    var cls=sigSort.col===col?" sorted":"";
+    return '<th class="'+cls+'" onclick="sortSig(\''+col+'\')">'+lbl+arrow+'</th>';
+  }
+
+  var rows=page_data.map(function(s){
+    var tc=s.type==="b"?"#3d7fff":"#8b6fff";
+    var tbg=s.type==="b"?"#1a2a4a":"#1a1530";
+    var terr_col=s.territory==="owned"?"#1db87a":s.territory==="contested"?"#f0a830":"#e8453c";
+    var drop_tag=s.is_drop?'<span class="stag tag-drop">drop</span>':s.lift>=2?'<span class="stag tag-rising">rising</span>':'<span class="stag tag-stable">stable</span>';
+    var gt_badge=s.from_trends?'<span class="stag" style="background:#4285f422;color:#4285f4;margin-left:4px">G</span>':"";
+    var conf_pct=Math.round(s.confidence*100);
+    var hrs=s.hours_ago===0?"just now":s.hours_ago<24?s.hours_ago+"h ago":Math.floor(s.hours_ago/24)+"d ago";
+    var impact=Math.round((BV[s.signal]||0)*100);
+    return '<tr class="'+(s.is_drop?"hl":"")+'">'+
+      '<td><div style="font-size:11px;color:var(--t2);font-family:var(--mono)">'+s.raw+'</div>'+gt_badge+'</td>'+
+      '<td><div style="font-weight:600;font-size:12px">'+s.label+'</div>'+
+        '<span class="stag '+(s.type==="b"?"tag-b":"tag-p")+'">'+(s.type==="b"?"doing":"feeling")+'</span></td>'+
+      '<td>'+
+        '<div style="display:flex;align-items:center;gap:5px">'+
+          '<span class="src-dot" style="background:'+s.source.col+';width:7px;height:7px;border-radius:50%;display:inline-block"></span>'+
+          '<span style="font-family:var(--mono);font-size:10px;color:var(--t2)">'+s.source.label+'</span>'+
+        '</div>'+
+        '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px">'+s.city+' · '+s.age_sub+'</div>'+
+      '</td>'+
+      '<td>'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<span style="font-family:var(--mono);font-size:13px;font-weight:600;color:'+tc+'">'+s.lift.toFixed(1)+'×</span>'+drop_tag+
+        '</div>'+
+        '<div class="mini-bar-wrap" style="margin-top:4px"><div class="mini-bar" style="width:'+Math.min(100,s.lift/6*100)+'%;background:'+tc+'"></div></div>'+
+      '</td>'+
+      '<td style="font-family:var(--mono);font-size:12px">'+s.novelty.toFixed(2)+'</td>'+
+      '<td>'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<span style="font-family:var(--mono);font-size:12px">'+conf_pct+'%</span>'+
+          '<div style="width:40px;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+conf_pct+'%;background:var(--green);border-radius:2px"></div></div>'+
+        '</div>'+
+      '</td>'+
+      '<td><span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:'+terr_col+'22;color:'+terr_col+'">'+s.territory+'</span></td>'+
+      '<td>'+
+        '<div style="font-family:var(--mono);font-size:12px;color:'+(impact>50?"#1db87a":impact>20?"#f0a830":"#4a4f68")+'">'+impact+'%</div>'+
+        '<div class="mini-bar-wrap" style="margin-top:3px"><div class="mini-bar" style="width:'+impact+'%;background:'+(impact>50?"#1db87a":impact>20?"#f0a830":"#4a4f68")+'"></div></div>'+
+      '</td>'+
+      '<td style="font-family:var(--mono);font-size:11px;color:var(--t3)">'+hrs+'</td>'+
+      '<td><span style="font-family:var(--mono);font-size:13px;font-weight:700">'+s.score.toFixed(3)+'</span></td>'+
+    '</tr>';
+  }).join("");
+
+  el.innerHTML=
+    '<div class="sec">'+
+      '<div class="ey">Live signal feed · '+SIGS.length+' signals · <span style="color:#4285f4">'+SIGS.filter(function(s){return s.from_trends;}).length+' from Google Trends</span></div>'+
+      '<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:10px;overflow:hidden">'+
+        '<div style="overflow-x:auto">'+
+          '<table class="sig-table"><thead><tr>'+
+            '<th style="min-width:200px">Raw signal (classified by Claude)</th>'+
+            th("label","Signal")+th("source","Source")+th("lift","Lift")+th("novelty","Novelty")+
+            th("confidence","Confidence")+th("territory","Territory")+th("brand_impact","Brand impact")+
+            '<th>When</th>'+th("score","Score")+
+          '</tr></thead><tbody>'+rows+'</tbody></table>'+
+        '</div>'+
+      '</div>'+
+      '<div class="pager">'+
+        '<button class="pbtn" onclick="changePage(-1)" '+(sigPage===0?"disabled":"")+'>← Prev</button>'+
+        '<span>Page '+(sigPage+1)+' of '+totalP+' · '+sorted.length+' signals</span>'+
+        '<button class="pbtn" onclick="changePage(1)" '+(sigPage>=totalP-1?"disabled":"")+'>Next →</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="sec">'+
+      '<div class="ey">How signals are captured · the pipeline</div>'+
+      '<div class="two" style="gap:20px">'+
+        '<div class="chat">'+
+          '<div class="cm"><div class="av av-a">AI</div><div class="bub">Each row is a <strong>cultural signal</strong> — a behaviour someone in your target audience performed: searched, posted, streamed, attended, or ordered. The raw text column shows what was captured before classification.</div></div>'+
+          '<div class="cm u"><div class="av av-u">You</div><div class="bub">Where does the Google Trends data come in?</div></div>'+
+          '<div class="cm"><div class="av av-a">AI</div><div class="bub">Google Trends rising queries are the real-world search behaviour of your audience. When searches for "BGMI tournament 2026" spike 93% in Bangalore among 18–24 year olds, that is a gaming culture signal — more reliable than any survey. Claude classifies each rising query into the signal taxonomy above. <span class="it itb">G badge</span> marks Trends-sourced signals.</div></div>'+
+          '<div class="cm u"><div class="av av-u">You</div><div class="bub">What does the priority score mean?</div></div>'+
+          '<div class="cm"><div class="av av-a">AI</div><div class="bub"><strong>Score = √(lift) × novelty^0.6</strong><br>Lift = how many times above baseline. Novelty = how rare historically. High lift + high novelty = something new is happening that has not been branded yet. <em>That is the open brief.</em></div></div>'+
+        '</div>'+
+        '<div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Signals by source</div>'+
+          '<div class="cw" style="height:170px"><canvas id="src-chart"></canvas></div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin:12px 0 8px">Score distribution</div>'+
+          '<div class="cw" style="height:130px"><canvas id="dist-chart"></canvas></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+  setTimeout(function(){
+    var sc={};SOURCES.forEach(function(s){sc[s.id]=0;});
+    SIGS.forEach(function(s){sc[s.source.id]=(sc[s.source.id]||0)+1;});
+    mkBar("src-chart",SOURCES.map(function(s){return s.label;}),SOURCES.map(function(s){return sc[s.id];}),SOURCES.map(function(s){return s.col;}));
+    var bk=[0,0,0,0,0];
+    SIGS.forEach(function(s){bk[Math.min(4,Math.floor(s.score*2))]++;});
+    mkBar("dist-chart",["0–0.5","0.5–1","1–1.5","1.5–2","2+"],bk,"#3d7fff");
+  },60);
+}
+
+function renderNoviceSignals(el){
+  var top=SIGS.slice(0,6);
+  var cards=top.map(function(s){
+    var heat=s.lift>=4?"hot":s.lift>=2.5?"warm":"cool";
+    var heatcol=s.lift>=4?"#e8453c":s.lift>=2.5?"#f0a830":"#1db87a";
+    var explain=s.lift>=4?"Your audience is really into this right now — way more than usual. This is a short window. Move on this.":s.lift>=2.5?"This is growing. People are doing this more than normal. A good territory to seed.":"Steady signal — your audience does this regularly. Good for consistent brand presence.";
+    var action=s.lift>=4?"Brief something now — this window is 2–4 weeks.":"Add to your content strategy for next cycle.";
+    return '<div class="novice-card '+heat+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+        '<div style="font-size:14px;font-weight:700">'+s.label+'</div>'+
+        '<span style="font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:4px;background:'+heatcol+'22;color:'+heatcol+'">'+(s.lift>=4?"Hot":"${s.lift>=2.5?\"Rising\":\"Steady\"}")+'</span>'+
+      '</div>'+
+      '<div class="nc-stats">'+
+        '<div class="nc-stat"><div class="nc-stat-l">How much above normal</div><div class="nc-stat-v" style="color:'+heatcol+'">'+s.lift.toFixed(1)+'×</div></div>'+
+        '<div class="nc-stat"><div class="nc-stat-l">How new / rare</div><div class="nc-stat-v">'+Math.round(s.novelty*100)+'%</div></div>'+
+        '<div class="nc-stat"><div class="nc-stat-l">City</div><div class="nc-stat-v">'+s.city+'</div></div>'+
+      '</div>'+
+      '<div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:8px">'+explain+'</div>'+
+      '<div style="font-size:12px;font-weight:600;color:var(--blue);padding-top:8px;border-top:1px solid var(--b1)">What to do: '+action+'</div>'+
+    '</div>';
+  }).join("");
+  el.innerHTML='<div class="sec"><div class="ey">What your audience is doing right now · simple view</div>'+
+    '<div class="novice-grid">'+cards+'</div>'+
+    '<div class="acts"><button class="act" onclick="setMode(\'pro\')">Switch to Pro view for detailed data ↗</button></div>'+
+  '</div>';
+}
+
+function sortSig(col){
+  if(sigSort.col===col) sigSort.dir*=-1; else{sigSort.col=col;sigSort.dir=-1;}
+  sigPage=0;renderSignals();
+}
+function changePage(dir){
+  var tp=Math.ceil(SIGS.length/20);
+  sigPage=Math.max(0,Math.min(tp-1,sigPage+dir));
+  renderSignals();
+}
+
+/* DROPS TAB */
+function renderDrops(){
+  var el=document.getElementById("tab-drops");
+  var drops=SIGS.filter(function(s){return s.is_drop;}).slice(0,9);
+  if(!drops.length){el.innerHTML='<div class="loading">No drops detected. Lower the threshold or run analysis.</div>';return;}
+
+  if(mode==="novice"){
+    var cards_nov=drops.slice(0,4).map(function(d){
+      var hcol=d.lift>=4?"#e8453c":d.lift>=2.5?"#f0a830":"#1db87a";
+      var meta=SIG_META[d.signal]||{};
+      return '<div class="novice-card '+(d.lift>=4?"hot":d.lift>=2.5?"warm":"cool")+'" style="margin-bottom:10px">'+
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px">'+d.label+'</div>'+
+        '<div style="font-family:var(--mono);font-size:11px;color:'+hcol+';margin-bottom:8px">'+d.lift.toFixed(1)+'× above normal · spotted in '+d.city+'</div>'+
+        '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">The feeling underneath it:</div>'+
+        '<div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:10px">"'+d.tension+'"</div>'+
+        '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">Starter creative direction:</div>'+
+        '<div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:10px">'+(meta.dir||d.label)+'</div>'+
+        '<div style="font-size:12px;font-weight:600;color:var(--blue);border-top:1px solid var(--b1);padding-top:8px">This window lasts about 2–4 weeks. Act now or monitor.</div>'+
+      '</div>';
+    }).join("");
+    el.innerHTML='<div class="sec"><div class="ey">What is spiking right now · simple view</div>'+cards_nov+
+      '<div class="acts"><button class="act" onclick="setMode(\'pro\')">See full data in Pro view ↗</button>'+
+      '<button class="act primary" onclick="openClaude(\'Write a creative brief responding to the culture drop: '+drops[0].label+' — tension: '+drops[0].tension+'\')">Brief this in Claude ↗</button>'+
+      '</div></div>';
+    return;
+  }
+
+  var cards=drops.map(function(d){
+    var hcl=d.lift>=4?"hot":d.lift>=2.5?"warm":"rising";
+    var hcol=d.lift>=4?"#e8453c":d.lift>=2.5?"#f0a830":"#1db87a";
+    var hbg=d.lift>=4?"var(--rdim)":d.lift>=2.5?"var(--adim)":"var(--gdim)";
+    var hlbl=d.lift>=4?"Major drop":d.lift>=2.5?"Rising":"Emerging";
+    var tc=d.type==="b"?"#3d7fff":"#8b6fff";
+    var terr_col=d.territory==="owned"?"#1db87a":d.territory==="contested"?"#f0a830":"#e8453c";
+    return '<div class="drop-card '+hcl+'" onclick="openDropDetail('+d.id+')">'+
+      '<div class="drop-heat" style="background:'+hbg+';color:'+hcol+'">'+hlbl+'</div>'+
+      '<div style="margin-right:80px">'+
+        '<div class="dc-signal">'+d.label+'</div>'+
+        '<div class="dc-why">'+d.tension+'</div>'+
+      '</div>'+
+      '<div class="dc-stats">'+
+        '<div class="dc-stat"><div class="dc-stat-l">Lift</div><div class="dc-stat-v" style="color:'+tc+'">'+d.lift.toFixed(1)+'×</div></div>'+
+        '<div class="dc-stat"><div class="dc-stat-l">Novelty</div><div class="dc-stat-v">'+d.novelty.toFixed(2)+'</div></div>'+
+        '<div class="dc-stat"><div class="dc-stat-l">Score</div><div class="dc-stat-v">'+d.score.toFixed(2)+'</div></div>'+
+        '<div class="dc-stat"><div class="dc-stat-l">Territory</div><div class="dc-stat-v"><span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:4px;background:'+terr_col+'22;color:'+terr_col+'">'+d.territory+'</span></div></div>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+
+  el.innerHTML='<div class="sec"><div class="ey">Culture drops · signals spiking above baseline</div>'+
+    '<div class="drop-grid">'+cards+'</div>'+
+    '<div id="drop-detail"></div>'+
+  '</div>'+
+  '<div class="sec"><div class="ey">Understanding culture drops</div>'+
+    '<div class="chat">'+
+      '<div class="cm"><div class="av av-a">AI</div><div class="bub">A <strong>Culture Drop</strong> is the moment a behaviour or feeling spikes significantly above its own historical baseline — before it becomes mainstream, before it gets named, before competitors notice it. The scoring combines lift (how much above baseline) with novelty (how rare historically). A common signal spiking is noise. A rare signal spiking is a brief.</div></div>'+
+      '<div class="cm u"><div class="av av-u">You</div><div class="bub">How long does a drop window last?</div></div>'+
+      '<div class="cm"><div class="av av-a">AI</div><div class="bub">Typically <strong>2–4 weeks</strong> for an emerging signal before it reaches mainstream saturation. Google Trends signals can move faster — a rising query can peak within 72 hours. On-ground signals last longer. The "Novelty" score tells you: closer to 1.0 = historically rare = longer window. Closer to 0 = already appeared many times before = window is shorter.</div></div>'+
+    '</div>'+
+  '</div>';
+}
+
+function openDropDetail(id){
+  if(openDrop===id){openDrop=null;document.getElementById("drop-detail").innerHTML="";return;}
+  openDrop=id;
+  var s=SIGS.find(function(x){return x.id===id;});
+  if(!s) return;
+  var tc=s.type==="b"?"#3d7fff":"#8b6fff";
+  var meta=SIG_META[s.signal]||{};
+  var terr_col=s.territory==="owned"?"#1db87a":s.territory==="contested"?"#f0a830":"#e8453c";
+  document.getElementById("drop-detail").innerHTML=
+    '<div class="drill">'+
+      '<div class="dh"><div class="dt">'+s.label+' · Culture Drop Brief</div><button class="dcl" onclick="openDrop=null;document.getElementById(\'drop-detail\').innerHTML=\'\'">close ×</button></div>'+
+      '<div class="two">'+
+        '<div class="chat">'+
+          '<div class="cm"><div class="av av-a">AI</div><div class="bub"><strong>The drop:</strong> "'+s.label+'" is '+s.lift.toFixed(1)+'× above baseline in '+s.city+'.<br><strong>The tension:</strong> "'+s.tension+'"</div></div>'+
+          '<div class="cm u"><div class="av av-u">You</div><div class="bub">What is the creative opportunity?</div></div>'+
+          '<div class="cm"><div class="av av-a">AI</div><div class="bub">'+(meta.opp||"Seed this territory before competitors notice the spike.")+'</div></div>'+
+          '<div class="cm u"><div class="av av-u">You</div><div class="bub">Starter direction?</div></div>'+
+          '<div class="cm"><div class="av av-a">AI</div><div class="bub"><span class="it itb">Direction</span> '+(meta.dir||s.label)+'<br><br>Write to the feeling: <strong>"'+s.tension+'"</strong></div></div>'+
+          '<div class="cm u"><div class="av av-u">You</div><div class="bub">How long is this window?</div></div>'+
+          '<div class="cm"><div class="av av-a">AI</div><div class="bub">Novelty score '+s.novelty.toFixed(2)+' → approximately <strong>'+(s.novelty>0.7?"3–5 weeks":s.novelty>0.4?"2–3 weeks":"1–2 weeks")+'</strong> before mainstream saturation. '+(s.from_trends?"Google Trends signal — may peak faster. Monitor daily.":"Organic signal — slightly longer shelf life.")+'</div></div>'+
+        '</div>'+
+        '<div>'+
+          '<div class="three" style="margin-bottom:12px">'+
+            '<div class="mc"><div class="mcl">Lift</div><div class="mcv" style="color:'+tc+'">'+s.lift.toFixed(1)+'×</div></div>'+
+            '<div class="mc"><div class="mcl">Novelty</div><div class="mcv">'+s.novelty.toFixed(2)+'</div></div>'+
+            '<div class="mc"><div class="mcl">AI confidence</div><div class="mcv">'+Math.round(s.confidence*100)+'%</div></div>'+
+          '</div>'+
+          '<div class="mc" style="margin-bottom:10px">'+
+            '<div class="mcl">Territory</div>'+
+            '<div class="mcv" style="color:'+terr_col+'">'+s.territory+'</div>'+
+            '<div class="mcs">'+(s.territory==="gap"?"Unclaimed — move first.":s.territory==="contested"?"Competitors present — move fast.":"Brand has presence — deepen it.")+'</div>'+
+          '</div>'+
+          '<div class="mc" style="margin-bottom:10px">'+
+            '<div class="mcl">Source</div>'+
+            '<div class="mcv">'+s.source.label+'</div>'+
+            '<div class="mcs">'+(s.from_trends?"Rising Google query: "+s.gt_query:"Organic social/platform signal")+'</div>'+
+          '</div>'+
+          '<div class="acts">'+
+            '<button class="act primary" onclick="openClaude(\'Write a creative brief for '+(iv("fbrand")||"Tuborg")+' responding to the culture drop: '+s.label+' — tension: '+s.tension+' — direction: '+(meta.dir||s.label)+'\')">Brief this drop in Claude ↗</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  document.getElementById("drop-detail").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+/* FIT TAB */
+function renderFit(){
+  var el=document.getElementById("tab-fit");
+  var l=parseInt(iv("flens"))%5;
+  var fitH=FIT_H[l];
+  var fitNow=fitH[6],fitD=fitNow-fitH[5];
+  var fitCol=fitNow>=70?"#1db87a":fitNow>=50?"#f0a830":"#e8453c";
+  var verdict=fitNow>=65?"Strong resonance. Scale media with confidence.":fitNow>=45?"Partial. Seed missing territories before scaling paid.":"Off-culture. Seed culture, then advertise.";
+  var avg4=Math.round(fitH.slice(-4).reduce(function(a,b){return a+b;},0)/4);
+  var peak=Math.max.apply(null,fitH);
+  var wkHTML=WEEKS.map(function(w,i){
+    var v=fitH[i],prev=i>0?fitH[i-1]:v,d=v-prev;
+    var col=v>=70?"#1db87a":v>=50?"#f0a830":"#e8453c";
+    return '<div class="fh-cell" style="background:var(--bg3);border-radius:6px;padding:7px 4px;text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--t3)">'+w+'</div><div style="font-size:14px;font-weight:700;color:'+col+';margin-top:2px">'+v+'%</div><div style="font-family:var(--mono);font-size:9px;color:'+(d>=0?"#1db87a":"#e8453c")+';margin-top:1px">'+(d>=0?"+":"")+d+'</div></div>';
+  }).join("");
+  var comp_fits=[fitNow,FIT_H[(l+1)%5][6],FIT_H[(l+2)%5][6]];
+  var comp_cols=["#3d7fff","#1db87a","#f0a830"];
+  var comp_names=["Tuborg","Heineken","Kingfisher"];
+
+  /* Gap analysis */
+  var sig_scores={};
+  SIGS.forEach(function(s){sig_scores[s.signal]=Math.max(sig_scores[s.signal]||0,s.score);});
+  var lN=Math.sqrt(Object.values(sig_scores).reduce(function(a,b){return a+b*b;},0))||1;
+  var sig_norm={};
+  Object.keys(sig_scores).forEach(function(k){sig_norm[k]=sig_scores[k]/lN;});
+  var gaps=Object.keys(BV).map(function(k){var lp=sig_norm[k]||0;return{k:k,bd:BV[k],lp:lp,gap:BV[k]-lp};}).filter(function(g){return g.gap>0.05;}).sort(function(a,b){return b.gap-a.gap;});
+
+  if(mode==="novice"){
+    el.innerHTML=
+      '<div class="sec">'+
+        '<div class="ey">Is your brand in sync with this audience?</div>'+
+        '<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:20px;margin-bottom:16px">'+
+          '<div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:8px">Culture fit score — how in-sync your brand is</div>'+
+          '<div class="fit-score-big" style="color:'+fitCol+'">'+fitNow+'%</div>'+
+          '<div style="font-size:14px;color:var(--t2);margin-top:8px;line-height:1.6">'+
+            (fitNow>=65?"Your brand feels like it belongs in this audience\'s world right now. You can run paid media confidently.":
+             fitNow>=45?"Your brand is partially in sync. There are some gaps. Fix those before spending big on ads.":
+             "Your brand feels out of touch with this audience right now. Do not scale ads — work on getting more relevant first.")+
+          '</div>'+
+          '<div class="fit-bar-wrap"><div class="fit-bar-fill" style="width:'+fitNow+'%;background:'+fitCol+'"></div></div>'+
+          '<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--t3)"><span>Out of touch</span><span>Getting there</span><span>Perfectly in sync</span></div>'+
+        '</div>'+
+        '<div class="ey">What is not connecting yet</div>'+
+        gaps.slice(0,4).map(function(g){
+          var u=g.gap>.3?"#e8453c":g.gap>.18?"#f0a830":"#1db87a";
+          var meta=SIG_META[g.k];
+          var lbl=meta?meta.label:g.k;
+          var action=g.gap>.3?"This is urgent. Start here.":g.gap>.18?"Work on this next.":"Keep an eye on it.";
+          return '<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;margin-bottom:8px">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+              '<div style="font-size:14px;font-weight:700">'+lbl+'</div>'+
+              '<span style="font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:4px;background:'+u+'22;color:'+u+'">'+action+'</span>'+
+            '</div>'+
+            '<div style="font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:8px">Your brand wants to be strong here, but your audience is not making that connection yet. The gap is <strong>'+Math.round(g.gap*100)+'%</strong>.</div>'+
+            '<div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+Math.round(g.lp/(g.bd||.01)*100)+'%;background:'+u+';border-radius:2px"></div></div>'+
+          '</div>';
+        }).join("")+
+        '<div class="acts"><button class="act" onclick="setMode(\'pro\')">See full gap analysis in Pro view ↗</button></div>'+
+      '</div>';
+    return;
+  }
+
+  var gapRows=gaps.slice(0,8).map(function(g){
+    var u=g.gap>.3?"#e8453c":g.gap>.18?"#f0a830":"#1db87a";
+    var meta=SIG_META[g.k];var lbl=meta?meta.label:g.k;
+    var fp=Math.round(g.lp/(g.bd||.01)*100);
+    return '<tr>'+
+      '<td style="font-weight:600;font-size:12px">'+lbl+'</td>'+
+      '<td style="font-family:var(--mono);font-size:11px;color:var(--blue)">'+Math.round(g.bd*100)+'%</td>'+
+      '<td style="font-family:var(--mono);font-size:11px;color:var(--t2)">'+Math.round(g.lp*100)+'%</td>'+
+      '<td><div class="mini-bar-wrap"><div class="mini-bar" style="width:'+fp+'%;background:'+u+'"></div></div></td>'+
+      '<td style="font-family:var(--mono);font-size:12px;font-weight:600;color:'+u+'">-'+Math.round(g.gap*100)+'pp</td>'+
+      '<td><span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:'+u+'22;color:'+u+'">'+(g.gap>.3?"Fix now":g.gap>.18?"This cycle":"Watch")+'</span></td>'+
+    '</tr>';
+  }).join("");
+
+  el.innerHTML=
+    '<div class="sec">'+
+      '<div class="ey">Culture fit · brand alignment score</div>'+
+      '<div class="two" style="gap:20px;align-items:start">'+
+        '<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:16px 20px">'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Culture fit · '+iv("fbrand")+'</div>'+
+          '<div class="fit-score-big" style="color:'+fitCol+'">'+fitNow+'%</div>'+
+          '<div style="font-size:13px;color:var(--t2);margin-top:6px;line-height:1.5;max-width:280px">'+verdict+'</div>'+
+          '<div class="fit-bar-wrap"><div class="fit-bar-fill" style="width:'+fitNow+'%;background:'+fitCol+'"></div></div>'+
+          '<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:16px"><span>0% off</span><span>50% partial</span><span>100% on</span></div>'+
+          '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">'+wkHTML+'</div>'+
+          '<div class="three" style="margin-top:12px">'+
+            '<div class="mc"><div class="mcl">4w avg</div><div class="mcv">'+avg4+'%</div></div>'+
+            '<div class="mc"><div class="mcl">7w peak</div><div class="mcv">'+peak+'%</div></div>'+
+            '<div class="mc"><div class="mcl">Trend</div><div class="mcv" style="color:'+fitCol+'">'+(fitD>=0?"↑":"↓")+Math.abs(fitD)+'pp</div></div>'+
+          '</div>'+
+        '</div>'+
+        '<div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">7-week trend</div>'+
+          '<div class="cw" style="height:150px;margin-bottom:16px"><canvas id="fit-line"></canvas></div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Competitive pulse · this lens</div>'+
+          comp_names.map(function(b,i){
+            var f=comp_fits[i],col=comp_cols[i],lead=f===Math.max.apply(null,comp_fits);
+            var d=f-fitNow,dc=d>0?"#e8453c":d<0?"#1db87a":"#4a4f68";
+            var dtxt=d>0?"-"+d+"pp":d<0?"+"+Math.abs(d)+"pp":"=";
+            return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--b1)">'+
+              '<div style="font-size:13px;font-weight:600;min-width:90px;color:'+col+'">'+b+(lead?" · lead":"")+'</div>'+
+              '<div style="flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+f+'%;background:'+col+'"></div></div>'+
+              '<div style="font-family:var(--mono);font-size:12px;font-weight:600;color:'+col+'">'+f+'%</div>'+
+              '<div style="font-family:var(--mono);font-size:10px;color:'+dc+'">'+dtxt+'</div>'+
+            '</div>';
+          }).join("")+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="sec">'+
+      '<div class="ey">Brand–culture gap analysis</div>'+
+      '<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:10px;overflow:hidden">'+
+        '<table class="sig-table"><thead><tr>'+
+          '<th>Signal / Territory</th><th>Brand desire</th><th>Live audience</th><th>Progress</th><th>Gap</th><th>Priority</th>'+
+        '</tr></thead><tbody>'+gapRows+'</tbody></table>'+
+      '</div>'+
+    '</div>';
+
+  setTimeout(function(){
+    mkLine("fit-line",WEEKS,fitH,fitCol);
+  },60);
+}
+
+/* TENSIONS TAB */
+function renderTensions(){
+  var el=document.getElementById("tab-tensions");
+  var tensions=[
+    {id:"t0",tension:"Social identity through taste",   insight:"What you stream, wear, or eat signals to your tribe. The brand that helps people signal identity without feeling tryhard wins.",signals:["music_streaming","fashion_sneakers","digital_expresser","social_identity"],brief:"Don't sell the product. Sell the signal. The Tuborg in their Reel is not a drink — it's a statement."},
+    {id:"t1",tension:"Performance pressure vs relief",  insight:"This generation is always on. The micro-escape moment is precious and completely unbranded.",signals:["escapist_micro","gaming_mobile","food_delivery","late_night_out"],brief:"Show the switch-off. Not the party. The first moment of stillness. That's when the brand belongs."},
+    {id:"t2",tension:"FOMO vs genuine experience",      insight:"They go to festivals to feel something, not just to post. But FOMO drives them there.",signals:["festivals","travel_weekend","experience_maximiser","cultural_explorer"],brief:"Own the moment before the headliner. Not the headline — the anticipation."},
+    {id:"t3",tension:"Standing out vs fitting in",      insight:"Brand choice is tribal. They adopt brands their peer group validates and quietly drop ones that embarrass them.",signals:["social_identity","digital_expresser","fashion_sneakers","group_socialiser"],brief:"Peer-to-peer seeding over broadcast. Real people, real moments. Must be found, not announced."},
+    {id:"t4",tension:"Doing more vs being present",     insight:"They want to do everything and document everything — but an emerging counter-reaction wants to actually feel something.",signals:["experience_maximiser","cultural_explorer","escapist_micro","travel_weekend"],brief:"Give them a story worth telling AND a moment worth actually living."},
+    {id:"t5",tension:"Curated self vs real self",       insight:"The gap between who they are online and who they are at 11pm is widening. Brands that see the real self earn real trust.",signals:["digital_expresser","late_night_out","food_delivery","escapist_micro"],brief:"Make something they'd post, but shoot it like something they'd actually do."}
+  ];
+
+  var novice_explain={
+    t0:"This is about fitting in with the right crowd. People use what they wear, stream, and drink to show others who they are.",
+    t1:"Everyone feels overwhelmed. The moments of just doing nothing — even for 20 minutes — are gold. Brands that show up there feel real.",
+    t2:"Nobody wants to miss out, but everyone secretly wants to actually enjoy the thing instead of just documenting it.",
+    t3:"People pick brands their friends approve of. If your brand is not something they'd be caught with, you're invisible.",
+    t4:"They want to do everything. But they're starting to realise they can't. Brands that help them choose feel wise.",
+    t5:"Their online self is polished. Their real self is messier. Brands that see the mess first are the ones they trust."
+  };
+
+  var cards=tensions.map(function(t){
+    var isOpen=openTension===t.id;
+    var sigTags=t.signals.map(function(s){
+      var meta=SIG_META[s];if(!meta) return "";
+      var bc=meta.t==="b"?"#3d7fff":"#8b6fff",bg=meta.t==="b"?"#1a2a4a":"#1a1530";
+      return '<span class="stag" style="background:'+bg+';color:'+bc+'">'+meta.label+'</span>';
+    }).join(" ");
+    var body=mode==="novice"?(novice_explain[t.id]||t.insight):t.insight;
+    return '<div class="tension-card'+(isOpen?" active":"")+'" onclick="toggleTension(\''+t.id+'\')">'+
+      '<div class="tc-t">"'+t.tension+'"</div>'+
+      '<div class="tc-i">'+body+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+sigTags+'</div>'+
+      '<div class="tc-brief'+(isOpen?" active":"")+'"><strong>Brief starter:</strong> '+t.brief+'</div>'+
+      (isOpen?'<div class="acts" style="margin-top:10px"><button class="act primary" onclick="event.stopPropagation();openClaude(\'Write 3 creative concepts for '+iv("fbrand")+' using the tension: '+t.tension+' — brief: '+t.brief+'\')">Develop this tension in Claude ↗</button></div>':"")+
+    '</div>';
+  }).join("");
+  el.innerHTML='<div class="sec"><div class="ey">Tension library · the emotional raw material for creative work</div>'+
+    '<div class="tension-grid">'+cards+'</div>'+
+  '</div>';
+}
+
+function toggleTension(id){openTension=(openTension===id)?null:id;renderTensions();}
+
+/* HOW TO READ TAB */
+function renderHowTo(){
+  var el=document.getElementById("tab-howto");
+  var cards=[
+    {n:"01",t:"What is a cultural signal?",b:"A cultural signal is anything a real person in your target audience actually did — searched, streamed, posted, ordered, attended. Not what they said they'd do in a survey. What they did.",eg:"<strong>Example:</strong> 50,000 people in BLR searched 'BGMI tournament' in one week → that's a gaming signal"},
+    {n:"02",t:"What does 'lift' mean?",b:"Lift is how many times above normal this signal is right now. A lift of ×3.2 means this behaviour is happening 3.2 times more than usual. Anything above ×2 is worth paying attention to. Above ×4 is a brief opportunity.",eg:"<strong>Example:</strong> Festival searches usually score 40. This week they're at 128. Lift = ×3.2 → brief now"},
+    {n:"03",t:"What is novelty?",b:"Novelty is how rare or new this signal is. A score near 1.0 means this behaviour has rarely appeared before — it's genuinely emerging. Near 0 means it's been around a long time.",eg:"<strong>Example:</strong> 'Micro-escape moments' novelty = 0.83 → rarely appeared before → territory is unclaimed"},
+    {n:"04",t:"What is a Culture Drop?",b:"A Culture Drop is when a signal spikes above its own baseline AND is relatively novel. It's the moment before a trend becomes mainstream. The window to own the territory is 2–4 weeks.",eg:"<strong>Example:</strong> Sneaker drop searches ×4.5 lift + 0.71 novelty → unclaimed drop → brief it now"},
+    {n:"05",t:"What is Culture Fit?",b:"Culture Fit is a 0–100% score showing how aligned your brand's desired territory is with what this audience is actually living this week. Below 45% means your brand feels off. Above 65% means you can scale media.",eg:"<strong>Example:</strong> Tuborg fit = 54% → partial. Close the festival gap before running paid."},
+    {n:"06",t:"What is a territory gap?",b:"A gap is where your brand wants to be culturally present but the audience doesn't connect you there yet. Each gap is an open brief — an unclaimed opportunity that costs effort not money to close.",eg:"<strong>Example:</strong> Tuborg brand desire for festivals = 64%, live audience = 18% → -46pp gap → creator seeding needed"},
+    {n:"07",t:"What does Google Trends add?",b:"Rising Google searches are real behavioural data — not opinions. When 'Sunburn festival 2026' spikes 76% in searches from Pune's 18–25 demo, that's a culture signal more reliable than any focus group.",eg:"<strong>Example:</strong> G-badge signals in the feed = pulled from Trends → higher reliability → weight them more"},
+    {n:"08",t:"How do I use this in a brief?",b:"Start with the tension (the feeling, not the behaviour). Write creative that speaks to why people do the thing, not what they do. Use the drop cards as brief triggers and the report tab to summarise everything in one page.",eg:"<strong>Example:</strong> Tension: 'Performance pressure vs relief' → Direction: 'The first moment of stillness' → Brief written"}
+  ];
+  el.innerHTML='<div class="sec">'+
+    '<div class="ey">How to read this dashboard · plain English guide</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">'+
+    cards.map(function(c){
+      return '<div class="htr-card">'+
+        '<div class="htr-n">'+c.n+'</div>'+
+        '<div class="htr-t">'+c.t+'</div>'+
+        '<div class="htr-b">'+c.b+'</div>'+
+        '<div class="htr-eg">'+c.eg+'</div>'+
+      '</div>';
+    }).join("")+
+    '</div>'+
+  '</div>'+
+  '<div class="sec"><div class="ey">The full pipeline · how data becomes creative strategy</div>'+
+    '<div class="chat">'+
+      '<div class="cm"><div class="av av-a">AI</div><div class="bub"><strong>Step 1 — Data collection:</strong> Platform APIs (Instagram, YouTube, Google Trends, Spotify) send raw data — post text, search queries, trending topics — into the system.</div></div>'+
+      '<div class="cm"><div class="av av-a">AI</div><div class="bub"><strong>Step 2 — Claude classification:</strong> Each raw signal is sent to Claude with a compact prompt. Claude returns: behaviours (what people are doing), psychographics (what they\'re feeling), and a confidence score.</div></div>'+
+      '<div class="cm"><div class="av av-a">AI</div><div class="bub"><strong>Step 3 — Lift and novelty scoring:</strong> Each classified signal is compared to its own 6-week rolling average. Lift = how much above normal. Novelty = how rare historically. Score = the brief priority.</div></div>'+
+      '<div class="cm"><div class="av av-a">AI</div><div class="bub"><strong>Step 4 — Culture Fit calculation:</strong> The brand\'s desired cultural vector (what territories it wants to own) is compared against the live audience signal vector using cosine similarity. The result is the Culture Fit score.</div></div>'+
+      '<div class="cm"><div class="av av-a">AI</div><div class="bub"><strong>Step 5 — Brief output:</strong> The Pulse Report tab assembles everything into a one-page brief a creative director can read in 30 seconds and walk into a room with.</div></div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* REPORT TAB */
+function renderReport(){
+  var el=document.getElementById("tab-report");
+  if(!SIGS.length){el.innerHTML='<div class="loading">Run analysis first.</div>';return;}
+  var l=parseInt(iv("flens"))%5;
+  var fitNow=FIT_H[l][6],fitD=fitNow-FIT_H[l][5];
+  var fitCol=fitNow>=70?"#1db87a":fitNow>=50?"#f0a830":"#e8453c";
+  var drops=SIGS.filter(function(s){return s.is_drop;});
+  var topSig=SIGS[0];
+  var meta=SIG_META[topSig.signal]||{};
+  var ready=SIGS.length>60&&fitNow>=50;
+  var lN=Math.sqrt(SIGS.reduce(function(a,b){return a+b.score*b.score;},0))||1;
+  var sig_norm={};
+  SIGS.forEach(function(s){sig_norm[s.signal]=Math.max(sig_norm[s.signal]||0,s.score/lN);});
+  var gaps=Object.keys(BV).map(function(k){var lp=sig_norm[k]||0;return{k:k,bd:BV[k],lp:lp,gap:BV[k]-lp};}).filter(function(g){return g.gap>0.1;}).sort(function(a,b){return b.gap-a.gap;});
+  var gap0=gaps.length>0?gaps[0]:{k:"festivals",gap:.35};
+  var bname=iv("fbrand")||"Tuborg";
+  var age_label=["16–22 Late Gen Z","21–34 Core Gen Z+","25–40 Millennial"][parseInt(iv("fage"))%3];
+  var city_label=["Metro + T1 + T2","Metro only","T1 + T2 only"][parseInt(iv("fcity"))%3];
+
+  var briefRows=[
+    {col:"#3d7fff",label:"Audience tension",  val:'"'+(meta.tension||topSig.tension)+'"',     body:"Open the brief with this feeling — not the product."},
+    {col:"#8b6fff",label:"Lead signal",        val:topSig.label,                               body:"Running "+topSig.lift.toFixed(1)+"× above baseline. Build at least one execution around this."},
+    {col:"#1db87a",label:"Creative direction", val:'"'+(meta.dir||topSig.label)+'"',           body:"That is the frame. Write from here."},
+    {col:"#e8453c",label:"Culture drops",      val:drops.length+" detected",                   body:drops.length>0?"\""+drops[0].label+"\" is most urgent — window is 2–4 weeks.":"No major drops. Monitor and refresh."},
+    {col:fitCol,   label:"Culture fit",        val:fitNow+"% · "+(fitD>=2?"improving":fitD<=-2?"slipping":"holding"),body:fitNow>=65?"Scale media. Brand fits this audience.":fitNow>=45?"Seed before scaling. Close "+gap0.k+" gap first.":"Off-culture. Seed then advertise."},
+    {col:"#f0a830",label:"#1 gap to close",    val:gap0.k,                                     body:"-"+Math.round(gap0.gap*100)+"pp gap. Creator seeding + on-ground this cycle."},
+    {col:ready?"#1db87a":"#f0a830",label:"Media verdict",val:ready?"Run paid now":"Seed first",body:ready?"Both conditions met. Scale.":"Fit or volume needs work. Content + creators first."}
+  ];
+
+  el.innerHTML=
+    '<div class="sec">'+
+      '<div class="ey">Pulse Report · '+bname+' · '+age_label+' · '+city_label+'</div>'+
+      '<div class="report-block">'+
+        '<div class="rb-title">CulturePulse Pulse Report · '+new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})+'</div>'+
+        briefRows.map(function(r){
+          return '<div class="rb-row"><div class="rb-dot" style="background:'+r.col+'"></div><div class="rb-label">'+r.label+'</div><div class="rb-content"><strong>'+r.val+'</strong> — '+r.body+'</div></div>';
+        }).join("")+
+      '</div>'+
+      drops.slice(0,3).map(function(d){
+        var m=SIG_META[d.signal]||{};
+        var tc=d.type==="b"?"#3d7fff":"#8b6fff";
+        return '<div class="report-block">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+            '<div style="font-size:14px;font-weight:700">Drop: '+d.label+'</div>'+
+            '<div style="font-family:var(--mono);font-size:11px;color:'+tc+'">'+d.lift.toFixed(1)+'× lift · '+d.city+'</div>'+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--t2);margin-bottom:6px"><strong>Tension:</strong> "'+d.tension+'"</div>'+
+          '<div style="font-size:12px;color:var(--t2);margin-bottom:6px"><strong>Direction:</strong> '+(m.dir||d.label)+'</div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Window: '+(d.novelty>0.7?"3–5 weeks":d.novelty>0.4?"2–3 weeks":"1–2 weeks")+' · Confidence: '+Math.round(d.confidence*100)+'% · Source: '+d.source.label+(d.from_trends?" · Google Trends":"")+'</div>'+
+        '</div>';
+      }).join("")+
+    '</div>'+
+    '<div class="acts">'+
+      '<button class="act primary" onclick="openClaude(\'Generate a full CulturePulse creative brief for '+bname+' targeting '+age_label+' in '+city_label+' — lead signal: '+topSig.label+' — tension: '+(meta.tension||topSig.tension)+' — top drop: '+(drops.length>0?drops[0].label:"none")+'\')">Generate full brief in Claude ↗</button>'+
+      '<button class="act success" onclick="window.print()">Export as PDF</button>'+
+      '<button class="act" onclick="go()">Refresh signals (-2 credits)</button>'+
+    '</div>';
+}
+
+function openClaude(txt){
+  window.open("https://claude.ai/new?q="+encodeURIComponent(txt),"_blank");
+}
+
+/* ── INIT ── */
+go();
+</script>
+</body>
+</html>
