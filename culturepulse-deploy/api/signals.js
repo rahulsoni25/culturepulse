@@ -203,22 +203,6 @@ export default async function handler(req, res) {
   }
 }
 
-// ── Standalone dev server (runs when executed directly) ──────────────────────
-// `node api/signals.js` → http://localhost:8787/api/signals
-const isDirectRun =
-  process.argv[1] && /signals\.js$/.test(process.argv[1].replace(/\\/g, "/"));
-if (isDirectRun) {
-  const http = await import("node:http");
-  const port = parseInt(process.env.PORT || "8787", 10);
-  http
-    .createServer(async (req, res) => {
-      const url = (req.url || "/").split("?")[0];
-      if (url === "/api/signals" || url === "/") return handler(req, res);
-      res.statusCode = 404;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ ok: false, error: "not found", path: url }));
-    })
-    .listen(port, () => {
-      console.log(`[culturepulse] dev API → http://localhost:${port}/api/signals`);
-    });
-}
+// Standalone dev server lives in scripts/dev-api.mjs — kept out of this file so
+// Vercel's function bundler doesn't trip on top-level dynamic imports.
+export { buildSignals }; // exposed for the dev runner
