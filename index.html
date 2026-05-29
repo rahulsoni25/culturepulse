@@ -1220,6 +1220,18 @@ function renderReport(){
   el.innerHTML=
     '<div class="sec">'+
       '<div class="ey">Pulse Report · '+bname+' · '+age_label+' · '+city_label+'</div>'+
+      '<div class="report-block" id="ai-brief-block" style="background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--b2);position:relative">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+          '<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--blue)">AI culture brief · weekly</div>'+
+          '<div id="ai-brief-status" style="font-family:var(--mono);font-size:10px;color:var(--t3)"></div>'+
+        '</div>'+
+        '<div id="ai-brief-body">'+
+          '<div style="padding:24px 0;text-align:center;color:var(--t2)">'+
+            '<button class="act primary" id="ai-brief-generate" onclick="generateAIBrief()" style="margin:0 auto">✨ Generate weekly brief</button>'+
+            '<div style="font-size:11px;color:var(--t3);margin-top:10px;font-family:var(--mono)">Mock model (free) · swap to Gemini 2.5 Flash with one env var</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
       '<div class="report-block">'+
         '<div class="rb-title">CulturePulse Pulse Report · '+new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})+'</div>'+
         briefRows.map(function(r){
@@ -1249,6 +1261,87 @@ function renderReport(){
 
 function openClaude(txt){
   window.open("https://claude.ai/new?q="+encodeURIComponent(txt),"_blank");
+}
+
+/* ── AI PULSE BRIEF ────────────────────────────────────────────────────────
+   Calls /api/pulse-report with brand/age/city → renders the LLM-style brief
+   into the Pulse Report tab. Currently backed by a mock-v1 template; the
+   prompt for the Gemini swap lives in api/pulse-report.js → buildPrompt().
+   Dev: falls back to localhost:8787 if the same-origin function is missing.
+─────────────────────────────────────────────────────────────────────────── */
+function generateAIBrief(){
+  var body=document.getElementById("ai-brief-body");
+  var status=document.getElementById("ai-brief-status");
+  if(!body) return;
+  status.textContent="generating…";
+  body.innerHTML='<div style="padding:32px;text-align:center;color:var(--t2);font-family:var(--mono);font-size:11px">Synthesising '+SIGS.filter(function(s){return s.live;}).length+' live signals…</div>';
+
+  var brand=iv("fbrand")||"Tuborg";
+  var age=["16–22 Late Gen Z","21–34 Core Gen Z+","25–40 Millennial"][parseInt(iv("fage"))%3];
+  var city=["Metro + T1 + T2","Metro only","T1 + T2 only"][parseInt(iv("fcity"))%3];
+  var qs="?brand="+encodeURIComponent(brand)+"&age="+encodeURIComponent(age)+"&city="+encodeURIComponent(city);
+  var devApi="http://localhost:8787/api/pulse-report"+qs;
+  var prodApi="/api/pulse-report"+qs;
+  var tryUrls=(location.hostname==="localhost"||location.hostname==="127.0.0.1")?[prodApi,devApi]:[prodApi];
+
+  function attempt(i){
+    if(i>=tryUrls.length){
+      status.textContent="offline";
+      body.innerHTML='<div style="padding:20px;color:var(--red);font-size:12px">Brief endpoint unreachable. Try refreshing once the API redeploys.</div>';
+      return;
+    }
+    fetch(tryUrls[i]).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+      .then(function(j){
+        if(!j||!j.ok) throw new Error(j&&j.error||"bad payload");
+        renderAIBrief(j);
+      }).catch(function(){attempt(i+1);});
+  }
+  attempt(0);
+}
+
+function renderAIBrief(j){
+  var body=document.getElementById("ai-brief-body");
+  var status=document.getElementById("ai-brief-status");
+  status.textContent=j.model+" · "+(j.counts?j.counts.total:0)+" signals · "+j.date;
+
+  var cites=(j.citations||[]).map(function(c){
+    return '<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 7px;border-radius:4px;background:var(--bdim);color:var(--blue);font-family:var(--mono);font-size:9px">'+c.signal+' · '+(c.lift||0)+'×</span>';
+  }).join("");
+
+  body.innerHTML=
+    '<div style="font-family:var(--fm);font-size:18px;font-weight:700;line-height:1.35;margin-bottom:16px;color:var(--t1)">'+escapeHtml(j.headline||"")+'</div>'+
+    (j.paragraphs||[]).map(function(p){
+      return '<p style="font-size:13px;line-height:1.65;color:var(--t1);margin-bottom:14px">'+escapeHtml(p)+'</p>';
+    }).join("")+
+    (j.actOn&&j.actOn.length?
+      '<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--b1)">'+
+        '<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.11em;color:var(--green);margin-bottom:10px">Act on this</div>'+
+        j.actOn.map(function(a,i){
+          return '<div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start">'+
+                   '<span style="font-family:var(--mono);font-size:11px;color:var(--green);min-width:18px">'+(i+1).toString().padStart(2,"0")+'</span>'+
+                   '<span style="font-size:12px;line-height:1.55;color:var(--t1)">'+escapeHtml(a)+'</span>'+
+                 '</div>';
+        }).join("")+
+      '</div>':"")+
+    (cites?
+      '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--b1)">'+
+        '<div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.11em;color:var(--t3);margin-bottom:6px">Cited live signals</div>'+
+        '<div>'+cites+'</div>'+
+      '</div>':"")+
+    '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="act" onclick="generateAIBrief()" style="font-size:11px;padding:6px 12px">↻ Regenerate</button>'+
+      '<button class="act" onclick="copyBrief()" style="font-size:11px;padding:6px 12px">📋 Copy as text</button>'+
+    '</div>';
+  // Stash for copy.
+  window.__lastBrief=j;
+}
+function escapeHtml(s){return String(s||"").replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function copyBrief(){
+  var j=window.__lastBrief; if(!j) return;
+  var txt=j.headline+"\n\n"+(j.paragraphs||[]).join("\n\n")+"\n\nACT ON THIS:\n"+(j.actOn||[]).map(function(a,i){return(i+1)+". "+a;}).join("\n");
+  navigator.clipboard.writeText(txt).then(function(){
+    var s=document.getElementById("ai-brief-status"); if(s){var old=s.textContent;s.textContent="copied ✓";setTimeout(function(){s.textContent=old;},1400);}
+  });
 }
 
 /* ── THEME ─────────────────────────────────────────────────────────────────

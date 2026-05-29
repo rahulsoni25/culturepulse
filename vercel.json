@@ -3,6 +3,9 @@
   "functions": {
     "api/signals.js": {
       "maxDuration": 10
+    },
+    "api/pulse-report.js": {
+      "maxDuration": 15
     }
   },
   "headers": [

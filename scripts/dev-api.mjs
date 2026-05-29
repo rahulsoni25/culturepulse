@@ -1,19 +1,27 @@
 // scripts/dev-api.mjs
-// Standalone Node dev server that wraps the Vercel handler at api/signals.js.
-// Run with: npm run dev:api  →  http://localhost:8787/api/signals
+// Standalone Node dev server that wraps the Vercel handlers.
+// Run with: npm run dev:api  →  http://localhost:8787/api/...
 import http from "node:http";
-import handler from "../api/signals.js";
+import signalsHandler from "../api/signals.js";
+import pulseReportHandler from "../api/pulse-report.js";
+
+const routes = {
+  "/api/signals":      signalsHandler,
+  "/api/pulse-report": pulseReportHandler,
+};
 
 const port = parseInt(process.env.PORT || "8787", 10);
 
 http
   .createServer(async (req, res) => {
     const url = (req.url || "/").split("?")[0];
-    if (url === "/api/signals" || url === "/") return handler(req, res);
+    const fn = routes[url] || (url === "/" ? signalsHandler : null);
+    if (fn) return fn(req, res);
     res.statusCode = 404;
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: false, error: "not found", path: url }));
+    res.end(JSON.stringify({ ok: false, error: "not found", path: url, routes: Object.keys(routes) }));
   })
   .listen(port, () => {
-    console.log(`[culturepulse] dev API → http://localhost:${port}/api/signals`);
+    console.log(`[culturepulse] dev API → http://localhost:${port}`);
+    Object.keys(routes).forEach((r) => console.log(`  • ${r}`));
   });
