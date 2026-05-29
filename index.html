@@ -920,9 +920,158 @@ function changePage(dir){
   renderSignals();
 }
 
-/* DROPS TAB */
+/* DROPS TAB ───────────────────────────────────────────────────────────────────
+   Hierarchical Culture Drops view — fetches /api/drops which returns the
+   3-level structure (L1 macro theme → L2 specific manifestations → L3
+   property candidates) plus an expanded tension (statement + proof + reason).
+   Falls back to the legacy flat-signal view if the endpoint is unreachable.
+─────────────────────────────────────────────────────────────────────────── */
+var HIER_DROPS_CACHE = null;
+
 function renderDrops(){
   var el=document.getElementById("tab-drops");
+  el.innerHTML='<div class="loading"><div class="spin"></div>Building 3-level Culture Drops…</div>';
+  fetchHierarchicalDrops(function(data){
+    if(data){ HIER_DROPS_CACHE = data; renderHierarchicalDrops(el, data); }
+    else    { renderLegacyDrops(el); }
+  });
+}
+
+function fetchHierarchicalDrops(cb){
+  var brand = (typeof iv==="function" ? iv("fbrand") : "tuborg") || "tuborg";
+  var persona = "urban_gen_z"; // future: read from a persona selector
+  var qs = "?brand="+encodeURIComponent(brand)+"&persona="+encodeURIComponent(persona);
+  var devApi = "http://localhost:8787/api/drops"+qs;
+  var prodApi = "/api/drops"+qs;
+  var urls = (location.hostname==="localhost"||location.hostname==="127.0.0.1") ? [prodApi, devApi] : [prodApi];
+  function attempt(i){
+    if(i>=urls.length){ cb(null); return; }
+    fetch(urls[i]).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(j){ if(!j||!j.ok) throw 0; cb(j); })
+      .catch(function(){ attempt(i+1); });
+  }
+  attempt(0);
+}
+
+function renderHierarchicalDrops(el, data){
+  // Trust panel (reuses the same agent-verdict pattern from the Pulse Report).
+  var trust = '';
+  if(data.review){
+    var f=data.review.freshness, q=data.review.quality;
+    function badgeCol(v){ return (v.passed && v.score>=95) ? 'var(--green)' : v.passed ? 'var(--amber)' : 'var(--red)'; }
+    function badgeBg(v){  return (v.passed && v.score>=95) ? 'var(--gdim)'  : v.passed ? 'var(--adim)'  : 'var(--rdim)'; }
+    trust =
+      '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
+        '<div style="flex:1;min-width:0;background:'+badgeBg(f)+';border:1px solid '+badgeCol(f)+'44;border-radius:8px;padding:8px 12px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<span style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:'+badgeCol(f)+'">Agent · Freshness</span>'+
+            '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+badgeCol(f)+'">'+f.score+'/100</span>'+
+          '</div>'+
+          '<div style="font-size:11px;color:var(--t2);margin-top:3px">'+escapeHtml(f.summary)+'</div>'+
+        '</div>'+
+        '<div style="flex:1;min-width:0;background:'+badgeBg(q)+';border:1px solid '+badgeCol(q)+'44;border-radius:8px;padding:8px 12px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<span style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:'+badgeCol(q)+'">Agent · Drops Quality</span>'+
+            '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+badgeCol(q)+'">'+q.score+'/100</span>'+
+          '</div>'+
+          '<div style="font-size:11px;color:var(--t2);margin-top:3px">'+escapeHtml(q.summary)+'</div>'+
+        '</div>'+
+      '</div>';
+  }
+
+  var dropCards = data.drops.map(function(drop, idx){
+    var liftCol = drop.lift_score >= 1500 ? 'var(--red)' : drop.lift_score >= 500 ? 'var(--amber)' : 'var(--green)';
+    var heatLbl = drop.lift_score >= 1500 ? 'MAJOR DROP' : drop.lift_score >= 500 ? 'RISING' : 'EMERGING';
+
+    var l2html = drop.level_2.map(function(l, k){
+      var srcBadge = l.evidence.source==='trends' ? 'G' : l.evidence.source==='news' ? 'N' : l.evidence.source==='wiki' ? 'W' : '·';
+      var srcCol   = l.evidence.source==='trends' ? '#4285f4' : l.evidence.source==='news' ? '#1db87a' : l.evidence.source==='wiki' ? '#8b6fff' : 'var(--t3)';
+      return '<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;'+(k<drop.level_2.length-1?'border-bottom:1px solid var(--b1);':'')+'">'+
+        '<div style="flex:0 0 20px;font-family:var(--mono);font-size:9px;color:var(--t3);padding-top:2px">'+(k+1)+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:13px;font-weight:600;color:var(--t1);line-height:1.4;margin-bottom:4px">'+escapeHtml(l.name)+'</div>'+
+          '<div style="display:flex;gap:6px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--t3)">'+
+            '<span style="background:'+srcCol+'22;color:'+srcCol+';padding:1px 5px;border-radius:3px;font-weight:700">'+srcBadge+'</span>'+
+            '<span>'+l.lens+'</span><span>·</span>'+
+            '<span style="color:'+liftCol+';font-weight:700">'+l.evidence.lift+'× lift</span><span>·</span>'+
+            '<span>'+(l.evidence.city||'India')+'</span>'+
+          '</div>'+
+        '</div>'+
+        (l.evidence.url ? '<a href="'+l.evidence.url+'" target="_blank" style="flex:0 0 auto;font-family:var(--mono);font-size:10px;color:var(--blue);text-decoration:none">source ↗</a>' : '')+
+      '</div>';
+    }).join('');
+
+    var l3html = drop.level_3.map(function(p){
+      var typeCol = p.type==='festival' ? 'var(--purple)' : p.type==='venue' ? 'var(--amber)' : p.type==='platform' ? 'var(--blue)' : p.type==='content' ? 'var(--green)' : 'var(--teal)';
+      return '<div style="background:var(--bg3);border:1px solid var(--b1);border-radius:8px;padding:10px 12px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px">'+
+          '<div style="font-size:12px;font-weight:600;color:var(--t1);line-height:1.3">'+escapeHtml(p.name)+'</div>'+
+          '<span style="font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:3px;background:'+typeCol+'22;color:'+typeCol+';white-space:nowrap;flex-shrink:0">'+p.type+'</span>'+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--t2);line-height:1.5;margin-bottom:6px">'+escapeHtml(p.activation_note)+'</div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:9px;color:var(--t3)">'+
+          '<span>'+(p.city_anchors||[]).slice(0,3).join(' · ')+'</span>'+
+          '<span style="color:var(--green);font-weight:700">fit '+p.fit_score.toFixed(2)+'</span>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+    var tension = drop.tension;
+    var tensionHtml = tension ? (
+      '<div style="background:var(--bg3);border-left:3px solid var(--red);border-radius:0 8px 8px 0;padding:12px 14px;margin-top:14px">'+
+        '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin-bottom:6px">Cultural tension</div>'+
+        '<div style="font-size:14px;font-weight:700;color:var(--t1);line-height:1.4;margin-bottom:10px">"'+escapeHtml(tension.statement)+'"</div>'+
+        '<div style="display:flex;gap:14px;flex-wrap:wrap">'+
+          '<div style="flex:1;min-width:220px">'+
+            '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:4px">Proof point</div>'+
+            '<div style="font-size:12px;color:var(--t1);line-height:1.55">'+escapeHtml(tension.proof_point)+'</div>'+
+          '</div>'+
+          '<div style="flex:1;min-width:220px">'+
+            '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:4px">Why this exists</div>'+
+            '<div style="font-size:12px;color:var(--t2);line-height:1.55">'+escapeHtml(tension.reasoning)+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    ) : '';
+
+    return '<div class="sec" style="margin-bottom:18px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:14px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">Level 1 · '+drop.signal_count+' signals · lift '+drop.lift_score+'</div>'+
+          '<div style="font-size:20px;font-weight:800;color:var(--t1);line-height:1.25">'+escapeHtml(drop.level_1.name)+'</div>'+
+          '<div style="font-size:13px;color:var(--t2);line-height:1.55;margin-top:4px">'+escapeHtml(drop.level_1.description)+'</div>'+
+        '</div>'+
+        '<span style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 10px;border-radius:5px;background:'+liftCol+'22;color:'+liftCol+';white-space:nowrap;flex-shrink:0">'+heatLbl+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">'+
+        '<div>'+
+          '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Level 2 · Manifestations (live signals)</div>'+
+          '<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:8px;padding:4px 12px">'+l2html+'</div>'+
+        '</div>'+
+        '<div>'+
+          '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Level 3 · Activation candidates (fit-ranked)</div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+l3html+'</div>'+
+        '</div>'+
+      '</div>'+
+      tensionHtml+
+    '</div>';
+  }).join('');
+
+  el.innerHTML =
+    '<div class="sec" style="padding-bottom:8px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+        '<div>'+
+          '<div class="ey" style="margin-bottom:2px">Culture Drops · '+data.brand+' · '+data.persona.name+'</div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--t3)">'+data.persona.short+'</div>'+
+        '</div>'+
+        '<button class="act" onclick="renderDrops()" style="font-size:11px;padding:6px 12px">↻ Refresh</button>'+
+      '</div>'+
+      trust+
+    '</div>'+
+    dropCards;
+}
+
+function renderLegacyDrops(el){
   var drops=SIGS.filter(function(s){return s.is_drop;}).slice(0,9);
   if(!drops.length){el.innerHTML='<div class="loading">No drops detected. Lower the threshold or run analysis.</div>';return;}
 

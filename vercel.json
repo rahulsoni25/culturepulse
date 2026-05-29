@@ -12,6 +12,9 @@
     },
     "api/agent-quality.js": {
       "maxDuration": 10
+    },
+    "api/drops.js": {
+      "maxDuration": 15
     }
   },
   "headers": [

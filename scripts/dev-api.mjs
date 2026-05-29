@@ -6,10 +6,12 @@ import signalsHandler from "../api/signals.js";
 import pulseReportHandler from "../api/pulse-report.js";
 import freshnessHandler from "../api/agent-freshness.js";
 import qualityHandler   from "../api/agent-quality.js";
+import dropsHandler     from "../api/drops.js";
 
 const routes = {
   "/api/signals":         signalsHandler,
   "/api/pulse-report":    pulseReportHandler,
+  "/api/drops":           dropsHandler,
   "/api/agent-freshness": freshnessHandler,
   "/api/agent-quality":   qualityHandler,
 };
