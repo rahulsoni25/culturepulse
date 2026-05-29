@@ -35,6 +35,65 @@ const SIGNAL_FRAMES = {
   cultural_explorer:{ theme: "discovery before hype",    verb: "finding",    artefact: "before everyone else" },
 };
 
+// Brand profiles — drive signal weighting + tactical suggestions. Adding a
+// new brand = adding an entry here; the prose adapts automatically.
+const BRAND_PROFILES = {
+  tuborg: {
+    name: "Tuborg",
+    positioning: "challenger lager · youth · music-led",
+    weight: { music_streaming:1.6, festivals:1.5, late_night_out:1.4, food_delivery:1.2, gaming_mobile:1.1, fashion_sneakers:1.0, cricket_watching:0.7, digital_expresser:1.1, travel_weekend:1.0, cultural_explorer:1.1 },
+    delivery_partner: "Zomato",
+    music_partners: "rising indie / hip-hop artists (50K–500K)",
+    festival_play: "Tier-2 stage activation · pre-headliner window",
+    tone: "youthful, music-first, never product-led",
+  },
+  heineken: {
+    name: "Heineken",
+    positioning: "premium international · F1/football · aspirational",
+    weight: { music_streaming:1.2, festivals:1.3, late_night_out:1.5, fashion_sneakers:1.4, travel_weekend:1.3, cricket_watching:0.9, food_delivery:1.0, gaming_mobile:1.0, digital_expresser:1.1, cultural_explorer:1.2 },
+    delivery_partner: "Swiggy Instamart (premium SKU)",
+    music_partners: "internationally-touring artists, EDM circuits",
+    festival_play: "headline-sponsor positioning · F1 GP weekends",
+    tone: "premium, globally connected, restrained",
+  },
+  kingfisher: {
+    name: "Kingfisher",
+    positioning: "mass-market lager · cricket-anchored · Indian heritage",
+    weight: { cricket_watching:2.0, food_delivery:1.4, festivals:1.1, late_night_out:1.1, music_streaming:1.0, gaming_mobile:0.9, fashion_sneakers:0.7, travel_weekend:1.2, digital_expresser:0.9, cultural_explorer:0.9 },
+    delivery_partner: "Swiggy",
+    music_partners: "mass-market Bollywood playback artists",
+    festival_play: "IPL match-day activation · viewing parties",
+    tone: "warm, mass, cricket-anchored",
+  },
+  bira: {
+    name: "Bira91",
+    positioning: "craft challenger · urban Gen-Z · design-led",
+    weight: { fashion_sneakers:1.7, music_streaming:1.4, festivals:1.3, digital_expresser:1.5, food_delivery:1.2, late_night_out:1.3, gaming_mobile:1.0, cricket_watching:0.6, travel_weekend:1.1, cultural_explorer:1.3 },
+    delivery_partner: "Zomato + Swiggy (craft SKU placement)",
+    music_partners: "indie-electronica, alt-hip-hop, Spotify-native artists",
+    festival_play: "boutique festival presence · branded merch capsule",
+    tone: "design-forward, ironic, urban",
+  },
+};
+
+function getBrandProfile(brandName) {
+  const raw = String(brandName || "").toLowerCase();
+  const key = raw.replace(/[^a-z0-9]/g, "");      // "bira91", "tuborg"
+  const lettersOnly = raw.replace(/[^a-z]/g, ""); // "bira", "tuborg"
+  if (BRAND_PROFILES[key]) return BRAND_PROFILES[key];
+  if (BRAND_PROFILES[lettersOnly]) return BRAND_PROFILES[lettersOnly];
+  // Custom/unknown brand → use a generic challenger profile but keep the brand name.
+  return {
+    name: brandName,
+    positioning: "[brand profile not on file — using youth-challenger defaults]",
+    weight: { music_streaming:1.3, festivals:1.2, late_night_out:1.2, food_delivery:1.1, gaming_mobile:1.0, fashion_sneakers:1.1, cricket_watching:1.0, digital_expresser:1.1, travel_weekend:1.0, cultural_explorer:1.1 },
+    delivery_partner: "delivery platform",
+    music_partners: "mid-tier creators (50K–200K)",
+    festival_play: "Tier-2 stage activation",
+    tone: "neutral",
+  };
+}
+
 function pickTop(signals, signalKey, n = 1) {
   return signals
     .filter((s) => s.signal === signalKey)
@@ -51,16 +110,25 @@ function summarise(s) {
 // ── Mock brief generator ─────────────────────────────────────────────────────
 // Writes planner-quality prose that templates against the actual live data,
 // so it never reads as generic boilerplate.
-function generateMockBrief({ brand, age, city, signals }) {
-  const topMusic   = pickTop(signals, "music_streaming", 2);
-  const topNight   = pickTop(signals, "late_night_out", 2);
-  const topFest    = pickTop(signals, "festivals", 1);
-  const topGaming  = pickTop(signals, "gaming_mobile", 1);
-  const topFood    = pickTop(signals, "food_delivery", 1);
-  const topCricket = pickTop(signals, "cricket_watching", 1);
+function generateMockBrief({ brand, age, city, signals, profile }) {
+  // Apply brand weighting to the signal pool — each signal gets a brand-adjusted
+  // score so the strongest cultural lens for THIS brand surfaces, not just the
+  // strongest globally.
+  const weighted = signals.map((s) => ({
+    ...s,
+    brandScore: (s.lift || 0) * ((profile.weight && profile.weight[s.signal]) || 1),
+  }));
 
-  // Pick the strongest cultural moment from across the lenses.
-  const all = signals.slice().sort((a, b) => (b.lift || 0) - (a.lift || 0));
+  const topMusic   = pickTop(weighted, "music_streaming", 2);
+  const topNight   = pickTop(weighted, "late_night_out", 2);
+  const topFest    = pickTop(weighted, "festivals", 1);
+  const topGaming  = pickTop(weighted, "gaming_mobile", 1);
+  const topFood    = pickTop(weighted, "food_delivery", 1);
+  const topCricket = pickTop(weighted, "cricket_watching", 1);
+
+  // Pick the strongest cultural moment FOR THIS BRAND (weighted), not just
+  // the strongest signal globally.
+  const all = weighted.slice().sort((a, b) => b.brandScore - a.brandScore);
   const lead = all.find((s) => s.signal !== "cultural_explorer") || all[0];
   const leadFrame = SIGNAL_FRAMES[lead?.signal] || SIGNAL_FRAMES.cultural_explorer;
 
@@ -95,41 +163,81 @@ function generateMockBrief({ brand, age, city, signals }) {
       : "") +
     `Read the audience as ${leadFrame.verb}, not consuming.`;
 
+  // P2 — brand-aware gap analysis. Picks the lens that THIS brand should care
+  // about based on its weight profile.
+  const brandTopLens = lead.signal;
+  const isCricketBrand = (profile.weight?.cricket_watching || 1) >= 1.8;
   const p2 =
-    topFest[0]
-      ? `Festival culture is the highest-leverage adjacency: ` +
+    isCricketBrand && topCricket[0]
+      ? `Cricket is non-negotiable for ${brand}: "${summarise(topCricket[0]).query}" is the conversation, ` +
+        `and ${brand}'s positioning ("${profile.positioning}") puts you closer to the watch-party ritual than any competitor. ` +
+        `The opening is to own the room, not the broadcast — ${profile.festival_play}.`
+      : topFest[0]
+      ? `Festival culture is the highest-leverage adjacency for ${brand}: ` +
         `"${summarise(topFest[0]).query}" carries ${topFest[0].lift}× lift, and ` +
-        `${brand} is structurally absent from the 90-minute pre-headliner window. ` +
-        `That window is where beer purchase decisions get made for the night — ` +
-        `it's currently owned by no brand, and the cost-to-own is one Tier-2 stage activation.`
-      : topGaming[0]
-      ? `Gaming + late-night is the converging signal nobody is claiming. ` +
-        `"${summarise(topGaming[0]).query}" surfaced this week alongside ${counts.night} nightlife signals — ` +
-        `the 10pm gaming + food delivery + drink combo is a Tuborg moment hiding in plain sight.`
-      : `${brand} is structurally absent from the strongest cultural moment surfaced this week. ` +
-        `That gap is the open brief.`;
+        `${brand} is structurally absent from the pre-headliner window. ` +
+        `${profile.festival_play} is the under-owned move — that 90-minute window is where ` +
+        `purchase decisions get made for the night.`
+      : topGaming[0] && (profile.weight?.gaming_mobile || 1) >= 1
+      ? `Gaming + late-night is converging and no beer brand owns it. ` +
+        `"${summarise(topGaming[0]).query}" surfaced alongside ${counts.night} nightlife signals — ` +
+        `the 10pm gaming + food delivery + drink combo fits ${brand}'s "${profile.positioning}" cleanly.`
+      : `${brand} is structurally absent from the strongest cultural moment for its audience. ` +
+        `Profile says: ${profile.positioning}. The gap is ${leadFrame.theme}.`;
 
   const p3 =
     `Culture Fit for ${brand} this cycle: holding, but the gap is in ${leadFrame.theme}. ` +
-    `Recommend seeding through 3-5 creators in that space before scaling paid. ` +
-    `Don't lead with the product. ` +
+    `Recommend seeding through ${profile.music_partners} before scaling paid. ` +
+    `Tone: ${profile.tone}. ` +
     `Lead with ${leadFrame.artefact} — the moment, not the bottle.`;
 
-  const actOn = [
-    topFest[0] && topMusic[0]
-      ? `Partner with a ${topMusic[0].city || "Mumbai"}-based artist 2 weeks before "${summarise(topFest[0]).query}" — pre-festival playlist drop, not on-stage.`
-      : topMusic[0]
-      ? `Seed "${summarise(topMusic[0]).query}" via 3 mid-tier music creators (50K–200K). Co-create a playlist, not a sponsorship.`
-      : `Pivot creator strategy toward music — currently under-indexed vs audience pull.`,
-    topNight[0]
-      ? `Own the "one more" moment: pilot 2 city-specific Reels concepts (${topNight[0].city}, then second metro) around the last-round social ritual. 48hr turnaround.`
-      : `Define the late-night ritual moment for ${brand}. Currently no one owns it.`,
-    topFood[0]
-      ? `Test a ${summarise(topFood[0]).query.includes("swiggy") ? "Swiggy" : "Zomato"} x ${brand} bundle for late-night orders — 2-week pilot in one metro.`
-      : counts.fest > 0
-      ? `Submit a Tier-2 stage activation brief for the next festival cycle — Pune or BLR before Mumbai.`
-      : `Run a sharper signal pull next week — current lens may be miscalibrated.`,
-  ];
+  // Action priority follows the lead lens — first action should match the
+  // brand's strongest signal type, not always default to music.
+  const actOn = [];
+
+  // Act #1: anchored on the lead lens
+  if (isCricketBrand && topCricket[0]) {
+    actOn.push(
+      `Anchor next cycle on "${summarise(topCricket[0]).query.slice(0, 80)}" — ` +
+      `3 city-specific watch-party creators, IPL fixture-aligned drops. ${profile.festival_play}.`
+    );
+  } else if (topFest[0] && topMusic[0]) {
+    actOn.push(
+      `Partner with a ${topMusic[0].city || "Mumbai"}-based artist 2 weeks before ` +
+      `"${summarise(topFest[0]).query.slice(0, 80)}" — ` +
+      `pre-festival ${profile.tone.includes("premium") ? "co-branded playlist" : "playlist drop"}, not on-stage.`
+    );
+  } else if (topMusic[0]) {
+    actOn.push(
+      `Seed "${summarise(topMusic[0]).query.slice(0, 80)}" via ${profile.music_partners}. ` +
+      `Co-create a playlist, not a sponsorship.`
+    );
+  } else {
+    actOn.push(
+      `Pivot creator strategy toward ${leadFrame.theme} — currently under-indexed vs audience pull.`
+    );
+  }
+
+  // Act #2: nightlife / ritual moment (or fallback)
+  if (topNight[0]) {
+    actOn.push(
+      `Own the "${leadFrame.artefact}" moment: pilot 2 city-specific Reels ` +
+      `(${topNight[0].city}, then second metro). 48hr turnaround.`
+    );
+  } else {
+    actOn.push(`Define the ${leadFrame.theme} ritual moment for ${brand}. Currently no one owns it.`);
+  }
+
+  // Act #3: commerce / activation lever
+  if (topFood[0]) {
+    actOn.push(`Test a ${profile.delivery_partner} × ${brand} bundle for late-night orders — 2-week pilot in one metro.`);
+  } else if (isCricketBrand) {
+    actOn.push(`${profile.festival_play} — submit brief for the next match cycle (Mumbai or Chennai before Delhi).`);
+  } else if (counts.fest > 0) {
+    actOn.push(`${profile.festival_play} — submit a brief for the next festival cycle (Pune or BLR before Mumbai).`);
+  } else {
+    actOn.push(`Run a sharper signal pull next week — current lens may be miscalibrated.`);
+  }
 
   return {
     headline,
@@ -191,14 +299,17 @@ export default async function handler(req, res) {
     const city  = u.searchParams.get("city")  || "Metro + T1 + T2";
 
     const signals = await buildSignals();
-    const brief = generateMockBrief({ brand, age, city, signals });
+    const profile = getBrandProfile(brand);
+    const brief = generateMockBrief({ brand: profile.name, age, city, signals, profile });
 
     res.setHeader("Content-Type", "application/json");
     res.statusCode = 200;
     res.end(JSON.stringify({
       ok: true,
       model: "mock-v1",
-      brand, age, city,
+      brand: profile.name,
+      brand_profile: { positioning: profile.positioning, tone: profile.tone },
+      age, city,
       generated_at: new Date().toISOString(),
       ...brief,
     }));

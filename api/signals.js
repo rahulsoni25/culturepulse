@@ -42,8 +42,23 @@ const TREND_KEYWORD_MAP = [
 ];
 
 // Confidence baseline per source — Trends rising queries are behavioural (high),
-// Google News is editorial (slightly lower but still solid).
-const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82 };
+// Google News is editorial (slightly lower), Wikipedia pageviews are
+// observation-of-attention (medium).
+const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82, wiki: 0.78 };
+
+// Geo bleed-through filter: Google News India returns Indian *coverage* of
+// foreign events too ("Best things in Abu Dhabi — Indian travellers"). Those
+// dilute the brief. Drop or downweight when the headline is unambiguously
+// non-India and doesn't reference the Indian diaspora/connection.
+const NON_INDIA_GEOS =
+  /\b(abu dhabi|dubai|uae|qatar|saudi|kuwait|bahrain|singapore|bangkok|thailand|vietnam|indonesia|malaysia|sydney|melbourne|london|paris|berlin|tokyo|seoul|new york|los angeles|texas|california)\b/i;
+const INDIA_CONNECTORS =
+  /\b(india|indian|desi|bollywood|mumbai|delhi|bangalore|bengaluru|chennai|kolkata|hyderabad|pune|jaipur|kerala|tamil|telugu|kannada|punjabi|marathi|bengali|gujarati|hindi|nri|diaspora)\b/i;
+
+function isForeignBleed(title) {
+  if (!NON_INDIA_GEOS.test(title)) return false;
+  return !INDIA_CONNECTORS.test(title);
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const TIMEOUT_MS = 4000;
@@ -96,6 +111,10 @@ async function fetchNews({ q, signal, city, cat }) {
         (block.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || "";
       const clean = title.trim().replace(/\s+/g, " ");
       if (!clean) continue;
+      // Drop items where the headline is unambiguously about a non-India geo
+      // with no Indian connector (Abu Dhabi event, Texas concert, etc.) — these
+      // dilute the India-context brief.
+      if (isForeignBleed(clean)) continue;
       // Lift = recency-weighted (newer = higher), normalized 30-90
       const hoursAgo = pub ? Math.max(0, (Date.now() - Date.parse(pub)) / 36e5) : 24;
       const lift = Math.min(90, Math.max(30, Math.round(85 - hoursAgo * 0.7)));
@@ -155,22 +174,69 @@ async function fetchGoogleTrendsIN() {
   }
 }
 
+// ── Wikipedia (en.wikipedia featured / most-read — India-relevant slice) ─────
+// We filter the global most-read list to articles that either (a) match an
+// Indian connector (Bollywood, Mumbai, etc.) or (b) classify into one of our
+// cultural buckets. Small but high-quality signal.
+async function fetchWikipediaTop() {
+  try {
+    // Most-read feed has a 1-day lag; use yesterday's UTC date.
+    const d = new Date(Date.now() - 24 * 36e5);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const url = `https://en.wikipedia.org/api/rest_v1/feed/featured/${y}/${m}/${day}`;
+    const r = await fetchWithTimeout(url);
+    if (!r.ok) return [];
+    const j = await r.json();
+    const articles = (j?.mostread?.articles || []).slice(0, 50);
+    const items = [];
+    for (const a of articles) {
+      const title = (a.normalizedtitle || a.titles?.normalized || a.title || "").trim();
+      if (!title) continue;
+      if (/^(deaths in|wikipedia|main page|special:|portal:)/i.test(title)) continue;
+      const sig = classifyTrend(title);
+      const isIndia = INDIA_CONNECTORS.test(title);
+      // Keep if India-connected OR mapped to a non-catch-all cultural bucket.
+      if (!isIndia && sig === "cultural_explorer") continue;
+      const views = a.views || 0;
+      const lift = Math.min(90, Math.max(45, Math.round(35 + Math.log10(views + 100) * 6)));
+      items.push({
+        query: title,
+        cat: "Wikipedia",
+        lift,
+        signal: sig,
+        city: isIndia ? "India" : "Global",
+        source: "wiki",
+        views,
+        url: `https://en.wikipedia.org/wiki/${encodeURIComponent((a.article || title).replace(/ /g, "_"))}`,
+      });
+      if (items.length >= 6) break;
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
 // ── Main handler ─────────────────────────────────────────────────────────────
 async function buildSignals() {
-  const [trends, ...newsBatches] = await Promise.all([
+  const [trends, wiki, ...newsBatches] = await Promise.all([
     fetchGoogleTrendsIN(),
+    fetchWikipediaTop(),
     ...NEWS_QUERIES.map(fetchNews),
   ]);
   const news = newsBatches.flat();
-  const all = [...trends, ...news];
+  const all = [...trends, ...wiki, ...news];
 
-  // Tag with confidence so the frontend can show G-badge / N-badge.
+  // Tag with confidence + source flags so the frontend can render G/N/W badges.
   return all.map((s, idx) => ({
     id: idx,
     ...s,
     confidence: SOURCE_CONFIDENCE[s.source] || 0.8,
     from_trends: s.source === "trends",
-    from_news: s.source === "news",
+    from_news:   s.source === "news",
+    from_wiki:   s.source === "wiki",
     fetched_at: new Date().toISOString(),
   }));
 }
