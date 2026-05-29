@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
+  /* Dark theme (default) */
   --bg:#07080d;--bg2:#0d0f18;--bg3:#111420;--bg4:#171a28;
   --b1:#1e2235;--b2:#252840;
   --t1:#e8eaf2;--t2:#8b90a8;--t3:#4a4f68;
@@ -17,10 +18,26 @@
   --red:#e8453c;--rdim:#2a0d0c;
   --purple:#8b6fff;--pdim:#1a1530;
   --teal:#1dc8c8;
+  --chart-grid:rgba(255,255,255,.04);
   --fm:'Syne',sans-serif;--mono:'DM Mono',monospace;
 }
+:root[data-theme="light"]{
+  --bg:#fafbfc;--bg2:#f2f4f8;--bg3:#e8ecf3;--bg4:#dde2ed;
+  --b1:#d8dde8;--b2:#c5cbd9;
+  --t1:#0a0d18;--t2:#4a4f68;--t3:#7a7f95;
+  --blue:#1e63ff;--bdim:#e0e9ff;
+  --green:#0f9d62;--gdim:#d6f4e8;
+  --amber:#d68a18;--adim:#fdf0d8;
+  --red:#d83a31;--rdim:#fde0de;
+  --purple:#6a4dff;--pdim:#ebe4ff;
+  --teal:#0eaaaa;
+  --chart-grid:rgba(0,0,0,.06);
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh}
+body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh;transition:background-color .25s ease,color .25s ease}
+.theme-toggle{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg2);border:1px solid var(--b1);border-radius:8px;color:var(--t2);cursor:pointer;font-size:14px;line-height:1;padding:0;transition:all .15s}
+.theme-toggle:hover{color:var(--t1);border-color:var(--b2)}
+.theme-toggle svg{width:15px;height:15px;display:block}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
@@ -325,6 +342,9 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
         <div class="cr-upgrade" onclick="showModal()">Upgrade ↗</div>
       </div>
     </div>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle light / dark mode">
+      <span id="theme-icon">🌙</span>
+    </button>
     <div class="live-pill"><div class="ldot"></div>Live feed</div>
   </div>
 </nav>
@@ -487,10 +507,14 @@ function rnd(a,b){return Math.random()*(b-a)+a;}
 function rndI(a,b){return Math.floor(rnd(a,b+1));}
 function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
 function killChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function cssVar(name){var v=getComputedStyle(document.documentElement).getPropertyValue(name);return v?v.trim():"";}
+function chartTickColor(){return cssVar("--t3")||"#4a4f68";}
+function chartGridColor(){return cssVar("--chart-grid")||"rgba(255,255,255,.04)";}
 
 function mkLine(id,labels,data,col){
   killChart(id);var ctx=document.getElementById(id);if(!ctx)return;
-  charts[id]=new Chart(ctx,{type:"line",data:{labels:labels,datasets:[{data:data,borderColor:col,backgroundColor:col+"22",fill:true,tension:.4,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4a4f68",font:{size:9}},grid:{color:"rgba(255,255,255,.04)"}},y:{ticks:{color:"#4a4f68",font:{size:9}},grid:{color:"rgba(255,255,255,.04)"}}}}});
+  var tc=chartTickColor(),gc=chartGridColor();
+  charts[id]=new Chart(ctx,{type:"line",data:{labels:labels,datasets:[{data:data,borderColor:col,backgroundColor:col+"22",fill:true,tension:.4,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,font:{size:9}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:9}},grid:{color:gc}}}}});
 }
 
 function mkBar(id,labels,data,cols){
@@ -498,7 +522,8 @@ function mkBar(id,labels,data,cols){
   var bc=cols||"#3d7fff";
   var bgarr=Array.isArray(bc)?bc:labels.map(function(){return bc+"66";});
   var bdarr=Array.isArray(bc)?bc:labels.map(function(){return bc;});
-  charts[id]=new Chart(ctx,{type:"bar",data:{labels:labels,datasets:[{data:data,backgroundColor:bgarr,borderColor:bdarr,borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4a4f68",font:{size:9}},grid:{display:false}},y:{ticks:{color:"#4a4f68",font:{size:9}},grid:{color:"rgba(255,255,255,.04)"}}}}});
+  var tc=chartTickColor(),gc=chartGridColor();
+  charts[id]=new Chart(ctx,{type:"bar",data:{labels:labels,datasets:[{data:data,backgroundColor:bgarr,borderColor:bdarr,borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,font:{size:9}},grid:{display:false}},y:{ticks:{color:tc,font:{size:9}},grid:{color:gc}}}}});
 }
 
 /* ── CREDIT SYSTEM ── */
@@ -1225,6 +1250,36 @@ function renderReport(){
 function openClaude(txt){
   window.open("https://claude.ai/new?q="+encodeURIComponent(txt),"_blank");
 }
+
+/* ── THEME ─────────────────────────────────────────────────────────────────
+   Light/dark toggle. Persists choice to localStorage. Re-renders all charts
+   on flip so their tick/grid colors pick up the new CSS vars.
+─────────────────────────────────────────────────────────────────────────── */
+function applyTheme(theme){
+  document.documentElement.setAttribute("data-theme", theme);
+  var icon=document.getElementById("theme-icon");
+  if(icon) icon.textContent = theme==="light" ? "☀️" : "🌙";
+}
+function toggleTheme(){
+  var cur=document.documentElement.getAttribute("data-theme")||"dark";
+  var next=cur==="light"?"dark":"light";
+  try{ localStorage.setItem("cp-theme", next); }catch(e){}
+  applyTheme(next);
+  // Re-render the active tab so charts rebuild with new colors.
+  if(typeof renderTab==="function" && typeof currentTab!=="undefined"){
+    try{ renderTab(currentTab); }catch(e){}
+  }
+}
+function initTheme(){
+  var saved;
+  try{ saved=localStorage.getItem("cp-theme"); }catch(e){}
+  if(!saved){
+    // Respect system preference on first visit.
+    saved = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+  }
+  applyTheme(saved);
+}
+initTheme();
 
 /* ── INIT ── */
 go();
