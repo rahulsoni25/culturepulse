@@ -382,7 +382,7 @@ var mode = "novice";
 var currentTab = "signals";
 var SIGS = [];
 var sigPage = 0;
-var sigSort = {col:"score",dir:-1};
+var sigSort = {col:"score",dir:1}; /* dir=1 → descending: comparator d*(bv-av) returns positive when bv>av, putting larger values first */
 var openDrop = null;
 var openTension = null;
 var charts = {};
@@ -1228,6 +1228,95 @@ function openClaude(txt){
 
 /* ── INIT ── */
 go();
+
+/* ── LIVE DATA LAYER ──────────────────────────────────────────────────────────
+   Fetch real signals from /api/signals (Google Trends India + Google News India)
+   and merge them into SIGS. Falls back silently to the mocked data if the API is
+   unreachable, so the static site never breaks on Vercel until the function is
+   deployed alongside it.
+─────────────────────────────────────────────────────────────────────────────── */
+(function(){
+  // Dev: same-origin returns 404 (static server), so try the dev API port too.
+  var devApi = "http://localhost:8787/api/signals";
+  var prodApi = "/api/signals";
+  var tryUrls = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? [prodApi, devApi]   // try same-origin first in case `vercel dev` is running
+    : [prodApi];
+
+  function ageHours(iso){
+    if(!iso) return 12;
+    var d = Date.parse(iso); if(isNaN(d)) return 12;
+    return Math.max(0, (Date.now()-d)/36e5);
+  }
+
+  function adaptLive(payload){
+    // Map the API shape onto the existing SIGS shape so the Signal Feed
+    // renderer and G-badge logic just work.
+    var live = payload.signals || [];
+    return live.map(function(s, i){
+      var meta = SIG_META[s.signal] || SIG_META.cultural_explorer;
+      var liftN = (s.lift || 40) / 20;      // 30-95 → ~1.5-4.75 (same scale as mocks)
+      var novelty = Math.min(0.95, 0.45 + (s.lift||40)/200);
+      var score = Math.sqrt(liftN) * Math.pow(novelty, 0.6);
+      var hours = (typeof s.hours_ago === "number")
+        ? s.hours_ago
+        : Math.round(ageHours(s.fetched_at));
+      var srcTag = s.from_trends ? "[Google Trends IN]" :
+                   s.from_news   ? "[Google News IN]"    : "[Live]";
+      return {
+        id: 9000 + i,
+        raw: srcTag + " " + s.query + (s.city ? " — " + s.city : ""),
+        signal: s.signal,
+        label: meta.label,
+        type: meta.t,
+        territory: meta.territory,
+        tension: meta.tension,
+        confidence: s.confidence || 0.85,
+        lift: liftN,
+        novelty: novelty,
+        score: score,
+        source: (typeof SOURCES !== "undefined" && SOURCES[0]) || "Live",
+        city: s.city || "India",
+        age_sub: "live",
+        hours_ago: hours,
+        is_drop: liftN >= 2.5,
+        brand_impact: (typeof BV !== "undefined" && BV[s.signal]) || 0,
+        from_trends: !!s.from_trends,
+        from_news: !!s.from_news,
+        gt_query: s.query,
+        gt_lift: s.lift,
+        live: true,
+        url: s.url || null
+      };
+    });
+  }
+
+  function injectLive(adapted){
+    if(!adapted.length) return;
+    // Prepend live signals so they sort to the top, then resort by score.
+    SIGS = adapted.concat(SIGS).sort(function(a,b){ return b.score - a.score; });
+    sigPage = 0;
+    try { renderAll(); } catch(e) { console.warn("renderAll failed", e); }
+    console.log("[CulturePulse] injected", adapted.length, "live signals");
+  }
+
+  function tryFetch(urls, i){
+    if(i >= urls.length){
+      console.info("[CulturePulse] live API unreachable — using mocked signals only");
+      return;
+    }
+    fetch(urls[i], { headers: { "Accept": "application/json" } })
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(j){
+        if(!j || !j.ok || !j.signals){ throw new Error("bad payload"); }
+        injectLive(adaptLive(j));
+      })
+      .catch(function(){ tryFetch(urls, i+1); });
+  }
+
+  // Defer one tick so SIGS from go() is fully populated first.
+  setTimeout(function(){ tryFetch(tryUrls, 0); }, 50);
+})();
 </script>
 </body>
 </html>

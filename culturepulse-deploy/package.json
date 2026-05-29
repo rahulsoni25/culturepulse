@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "CulturePulse — Brand Culture Intelligence Dashboard for Creative Professionals",
   "private": true,
+  "type": "module",
   "scripts": {
+    "dev:api": "node api/signals.js",
     "deploy": "vercel --prod",
     "preview": "vercel"
   }
