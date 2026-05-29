@@ -19,6 +19,8 @@
 //   ?city=Metro+T1+T2  (default: Metro + T1 + T2)
 
 import { buildSignals } from "./signals.js";
+import { runFreshnessAgent } from "./agent-freshness.js";
+import { runQualityAgent }   from "./agent-quality.js";
 
 // Map signal keys → human-readable cultural framing the mock uses to write prose.
 // (When we swap in Gemini, this becomes context in the prompt, not output text.)
@@ -300,7 +302,22 @@ export default async function handler(req, res) {
 
     const signals = await buildSignals();
     const profile = getBrandProfile(brand);
-    const brief = generateMockBrief({ brand: profile.name, age, city, signals, profile });
+    const rawBrief = generateMockBrief({ brand: profile.name, age, city, signals, profile });
+
+    // ── REVIEW PIPELINE ─────────────────────────────────────────────────────
+    // Two agents run on every brief before it goes out:
+    //   1. Freshness agent: audits the underlying signals (recency, diversity, volume)
+    //   2. Quality agent: audits the prose (grammar, claims-vs-stats, structure)
+    //      and AUTO-FIXES mechanical issues (double spaces, brand-case drift).
+    //
+    // The quality agent's fixed brief replaces the raw one. Both verdicts
+    // get shipped in the response under `review`, so the frontend can render
+    // a Trust panel and the user can see what was checked and what was fixed.
+    const generated_at = new Date().toISOString();
+    const briefWithMeta = { ...rawBrief, generated_at };
+    const freshness = runFreshnessAgent({ signals, brief: briefWithMeta });
+    const quality   = runQualityAgent({ brief: briefWithMeta, signals, brand: profile.name });
+    const brief     = quality.fixed_brief;
 
     res.setHeader("Content-Type", "application/json");
     res.statusCode = 200;
@@ -310,8 +327,9 @@ export default async function handler(req, res) {
       brand: profile.name,
       brand_profile: { positioning: profile.positioning, tone: profile.tone },
       age, city,
-      generated_at: new Date().toISOString(),
+      generated_at,
       ...brief,
+      review: { freshness, quality: quality.verdict },
     }));
   } catch (err) {
     res.statusCode = 500;

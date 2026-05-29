@@ -117,6 +117,10 @@ async function fetchNews({ q, signal, city, cat }) {
       if (isForeignBleed(clean)) continue;
       // Lift = recency-weighted (newer = higher), normalized 30-90
       const hoursAgo = pub ? Math.max(0, (Date.now() - Date.parse(pub)) / 36e5) : 24;
+      // Weekly brief = 7-day freshness window. Drop anything older. The
+      // freshness agent's fatal threshold matches this; keeping the source
+      // bound here means we never even surface stale content for review.
+      if (hoursAgo > 24 * 7) continue;
       const lift = Math.min(90, Math.max(30, Math.round(85 - hoursAgo * 0.7)));
       out.push({
         query: clean.slice(0, 140),
