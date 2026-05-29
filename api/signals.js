@@ -44,7 +44,7 @@ const TREND_KEYWORD_MAP = [
 // Confidence baseline per source — Trends rising queries are behavioural (high),
 // Google News is editorial (slightly lower), Wikipedia pageviews are
 // observation-of-attention (medium).
-const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82, wiki: 0.78 };
+const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82, wiki: 0.78, hn: 0.75 };
 
 // Geo bleed-through filter: Google News India returns Indian *coverage* of
 // foreign events too ("Best things in Abu Dhabi — Indian travellers"). Those
@@ -223,17 +223,37 @@ async function fetchWikipediaTop() {
   }
 }
 
-// ── Main handler ─────────────────────────────────────────────────────────────
-async function buildSignals() {
-  const [trends, wiki, ...newsBatches] = await Promise.all([
+// ── Main builder ─────────────────────────────────────────────────────────────
+// options.extra_queries: array of query strings (added to news fetch)
+// options.theme_extras:  array of theme keys (pulls tuned queries from sources-extra)
+// options.use_hackernews: boolean (adds Hacker News India-tagged stories)
+async function buildSignals(options = {}) {
+  // Build the dynamic news query list — defaults + reviewer-emitted extras.
+  let newsQueries = [...NEWS_QUERIES];
+  if (options.extra_queries?.length || options.theme_extras?.length) {
+    const { adhocQueries, extraQueriesForThemes } = await import("./sources-extra.js");
+    if (options.extra_queries?.length) newsQueries = newsQueries.concat(adhocQueries(options.extra_queries));
+    if (options.theme_extras?.length)  newsQueries = newsQueries.concat(extraQueriesForThemes(options.theme_extras));
+  }
+
+  // Promise list — every fetch happens in parallel.
+  const work = [
     fetchGoogleTrendsIN(),
     fetchWikipediaTop(),
-    ...NEWS_QUERIES.map(fetchNews),
-  ]);
-  const news = newsBatches.flat();
-  const all = [...trends, ...wiki, ...news];
+    ...newsQueries.map(fetchNews),
+  ];
+  if (options.use_hackernews) {
+    const { fetchHackerNews } = await import("./sources-extra.js");
+    work.push(fetchHackerNews());
+  }
+  const results = await Promise.all(work);
+  const [trends, wiki, ...rest] = results;
+  // The HN result (if any) is the last entry; everything before that is news.
+  const hn = options.use_hackernews ? rest.pop() : [];
+  const news = rest.flat();
+  const all = [...trends, ...wiki, ...news, ...hn];
 
-  // Tag with confidence + source flags so the frontend can render G/N/W badges.
+  // Tag with confidence + source flags so the frontend can render G/N/W/H badges.
   return all.map((s, idx) => ({
     id: idx,
     ...s,
@@ -241,6 +261,7 @@ async function buildSignals() {
     from_trends: s.source === "trends",
     from_news:   s.source === "news",
     from_wiki:   s.source === "wiki",
+    from_hn:     s.source === "hn",
     fetched_at: new Date().toISOString(),
   }));
 }

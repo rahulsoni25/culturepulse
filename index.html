@@ -954,29 +954,69 @@ function fetchHierarchicalDrops(cb){
 }
 
 function renderHierarchicalDrops(el, data){
-  // Trust panel (reuses the same agent-verdict pattern from the Pulse Report).
+  // Trust panel — three agent badges + iteration log of the self-improvement loop.
   var trust = '';
   if(data.review){
-    var f=data.review.freshness, q=data.review.quality;
-    function badgeCol(v){ return (v.passed && v.score>=95) ? 'var(--green)' : v.passed ? 'var(--amber)' : 'var(--red)'; }
-    function badgeBg(v){  return (v.passed && v.score>=95) ? 'var(--gdim)'  : v.passed ? 'var(--adim)'  : 'var(--rdim)'; }
+    var f=data.review.freshness, q=data.review.quality, r=data.review.reviewer;
+    function pct100Col(v){ return (v.passed && v.score>=95) ? 'var(--green)' : v.passed ? 'var(--amber)' : 'var(--red)'; }
+    function pct100Bg(v){  return (v.passed && v.score>=95) ? 'var(--gdim)'  : v.passed ? 'var(--adim)'  : 'var(--rdim)'; }
+    function pct10Col(v){  return (v && v.passed_10) ? 'var(--green)' : (v && v.overall_score >= 8) ? 'var(--amber)' : 'var(--red)'; }
+    function pct10Bg(v){   return (v && v.passed_10) ? 'var(--gdim)'  : (v && v.overall_score >= 8) ? 'var(--adim)'  : 'var(--rdim)'; }
+
+    var iterCount = (data.iterations || []).length;
+    var iterLog = (data.iterations || []).map(function(it, i){
+      var actsHtml = (it.applied || []).map(function(a){
+        return '<div style="font-family:var(--mono);font-size:10px;color:var(--blue);margin-left:14px">→ '+escapeHtml(a.type)+' · '+escapeHtml(a.note||'')+'</div>';
+      }).join('');
+      var sectionsHtml = Object.entries(it.section_scores || {}).map(function([k,v]){
+        var col = v.score >= 9.5 ? 'var(--green)' : v.score >= 8 ? 'var(--amber)' : 'var(--red)';
+        return '<div style="display:flex;gap:8px;font-size:11px;margin-bottom:2px;align-items:center">'+
+          '<span style="font-family:var(--mono);font-size:9px;background:var(--bg4);padding:1px 5px;border-radius:3px;min-width:140px;display:inline-block">'+k+'</span>'+
+          '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+col+';min-width:36px">'+v.score+'/10</span>'+
+          '<span style="color:var(--t2);font-size:11px">'+escapeHtml(v.notes)+'</span>'+
+        '</div>';
+      }).join('');
+      return '<div style="padding:10px 0;'+(i < iterCount-1?'border-bottom:1px solid var(--b1);':'')+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+          '<div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3)">Iteration '+it.iteration+'</div>'+
+          '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+(it.overall_score>=10?'var(--green)':'var(--amber)')+'">'+it.overall_score+'/10</div>'+
+        '</div>'+
+        sectionsHtml +
+        (actsHtml ? '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--b1)"><div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Fix actions applied</div>'+actsHtml+'</div>' : '')+
+      '</div>';
+    }).join('');
+
     trust =
-      '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
-        '<div style="flex:1;min-width:0;background:'+badgeBg(f)+';border:1px solid '+badgeCol(f)+'44;border-radius:8px;padding:8px 12px">'+
+      '<div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">'+
+        '<div style="flex:1;min-width:0;background:'+pct100Bg(f)+';border:1px solid '+pct100Col(f)+'44;border-radius:8px;padding:8px 12px">'+
           '<div style="display:flex;justify-content:space-between;align-items:center">'+
-            '<span style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:'+badgeCol(f)+'">Agent · Freshness</span>'+
-            '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+badgeCol(f)+'">'+f.score+'/100</span>'+
+            '<span style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:'+pct100Col(f)+'">Agent · Freshness</span>'+
+            '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+pct100Col(f)+'">'+f.score+'/100</span>'+
           '</div>'+
           '<div style="font-size:11px;color:var(--t2);margin-top:3px">'+escapeHtml(f.summary)+'</div>'+
         '</div>'+
-        '<div style="flex:1;min-width:0;background:'+badgeBg(q)+';border:1px solid '+badgeCol(q)+'44;border-radius:8px;padding:8px 12px">'+
+        '<div style="flex:1;min-width:0;background:'+pct100Bg(q)+';border:1px solid '+pct100Col(q)+'44;border-radius:8px;padding:8px 12px">'+
           '<div style="display:flex;justify-content:space-between;align-items:center">'+
-            '<span style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:'+badgeCol(q)+'">Agent · Drops Quality</span>'+
-            '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+badgeCol(q)+'">'+q.score+'/100</span>'+
+            '<span style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:'+pct100Col(q)+'">Agent · Drops Quality</span>'+
+            '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+pct100Col(q)+'">'+q.score+'/100</span>'+
           '</div>'+
           '<div style="font-size:11px;color:var(--t2);margin-top:3px">'+escapeHtml(q.summary)+'</div>'+
         '</div>'+
-      '</div>';
+        '<div style="flex:1;min-width:0;background:'+pct10Bg(r)+';border:1px solid '+pct10Col(r)+'44;border-radius:8px;padding:8px 12px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<span style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:'+pct10Col(r)+'">Agent · Reviewer</span>'+
+            '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+pct10Col(r)+'">'+(r && r.overall_score!=null ? r.overall_score : '—')+'/10</span>'+
+          '</div>'+
+          '<div style="font-size:11px;color:var(--t2);margin-top:3px">'+escapeHtml(r ? r.summary : '')+'</div>'+
+        '</div>'+
+      '</div>'+
+      (iterCount ? '<div style="background:var(--bg2);border:1px solid var(--b1);border-radius:8px;padding:10px 14px;margin-bottom:14px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center">'+
+          '<span style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)">Self-improvement loop · '+iterCount+' iteration'+(iterCount>1?'s':'')+'</span>'+
+          '<button onclick="toggleIterLog()" id="iter-toggle" style="font-family:var(--mono);font-size:10px;color:var(--t3);background:none;border:1px solid var(--b1);border-radius:5px;padding:2px 8px;cursor:pointer">show ▾</button>'+
+        '</div>'+
+        '<div id="iter-log" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--b1)">'+iterLog+'</div>'+
+      '</div>' : '');
   }
 
   var dropCards = data.drops.map(function(drop, idx){
@@ -1581,6 +1621,14 @@ function toggleTrust(){
   var isOpen=d.style.display!=="none";
   d.style.display=isOpen?"none":"block";
   b.textContent=isOpen?"show detail ▾":"hide detail ▴";
+}
+function toggleIterLog(){
+  var d=document.getElementById("iter-log");
+  var b=document.getElementById("iter-toggle");
+  if(!d||!b) return;
+  var isOpen=d.style.display!=="none";
+  d.style.display=isOpen?"none":"block";
+  b.textContent=isOpen?"show ▾":"hide ▴";
 }
 function copyBrief(){
   var j=window.__lastBrief; if(!j) return;

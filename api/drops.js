@@ -36,6 +36,7 @@ import { buildSignals } from "./signals.js";
 import { getPersona } from "./personas.js";
 import { THEMES, rankProperties } from "./properties.js";
 import { runFreshnessAgent } from "./agent-freshness.js";
+import { runReviewerAgent }   from "./agent-reviewer.js";
 
 // Brand weight lookup (reusing the BRAND_PROFILES weights from pulse-report
 // would create a circular import — keep a slim copy here.)
@@ -86,26 +87,46 @@ function clusterIntoThemes(signals) {
 // Each signal becomes a "specific manifestation" — its raw query is the
 // evidence. We dedupe by signal lens so we get variety not 4 music items.
 function buildLevel2(themeSignals, max = 4) {
+  // Sort first; we'll do TWO passes — variety first, then fill remaining
+  // slots with any high-score signal regardless of lens.
+  const sorted = themeSignals.slice().sort((a, b) => b.score - a.score);
   const seenLens = new Set();
   const out = [];
-  for (const s of themeSignals.sort((a, b) => b.score - a.score)) {
-    if (seenLens.has(s.signal) && out.length >= 2) continue;
+
+  // Pass 1: prefer lens variety. Take the top signal per distinct lens.
+  for (const s of sorted) {
+    if (seenLens.has(s.signal)) continue;
     seenLens.add(s.signal);
-    out.push({
-      name: titleCase((s.query || "").slice(0, 80)),
-      lens: s.signal,
-      evidence: {
-        query: s.query,
-        lift: s.lift,
-        source: s.source,
-        city: s.city,
-        url: s.url || null,
-        hours_ago: s.hours_ago,
-      },
-    });
+    out.push(asL2(s));
     if (out.length >= max) break;
   }
+
+  // Pass 2: fill remaining slots from the sorted pool, even if lens repeats.
+  if (out.length < max) {
+    const used = new Set(out.map((l) => l.evidence.query));
+    for (const s of sorted) {
+      if (used.has(s.query)) continue;
+      out.push(asL2(s));
+      if (out.length >= max) break;
+    }
+  }
+
   return out;
+}
+
+function asL2(s) {
+  return {
+    name: titleCase((s.query || "").slice(0, 80)),
+    lens: s.signal,
+    evidence: {
+      query: s.query,
+      lift: s.lift,
+      source: s.source,
+      city: s.city,
+      url: s.url || null,
+      hours_ago: s.hours_ago,
+    },
+  };
 }
 
 // Fill a tension proof-point template using counts/top-signal references.
@@ -175,7 +196,104 @@ function pickTensionForTheme(themeKey, persona) {
   return tensions[0];
 }
 
-// ── Main handler ─────────────────────────────────────────────────────────────
+// ── Build pipeline as a function so the loop can call it with different opts ─
+async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3 }) {
+  const rawSignals = await buildSignals(buildOptions);
+  const signals = rawSignals.map((s) => scored(s, persona, brand));
+
+  const themeAgg = clusterIntoThemes(signals);
+  const themeList = Object.entries(themeAgg)
+    .filter(([, v]) => v.lift_total > 0 && v.signals.length > 0)
+    .sort((a, b) => b[1].lift_total - a[1].lift_total)
+    .slice(0, 4);
+
+  const drops = themeList.map(([themeKey, agg]) => {
+    const theme = THEMES[themeKey];
+    const level_2 = buildLevel2(agg.signals, l2PerTheme);
+    const props = rankProperties({
+      brand: brandRaw,
+      personaKey,
+      themeKey,
+      signals,
+      limit: 4,
+    }).filter((p) => p.score >= propertyFloor);
+    const tensionDef = pickTensionForTheme(themeKey, persona);
+    const tension = tensionDef
+      ? {
+          key: tensionDef.key,
+          statement: tensionDef.statement,
+          proof_point: fillProofPoint(tensionDef.proof_point_template, signals),
+          reasoning: tensionDef.reasoning,
+        }
+      : null;
+
+    return {
+      level_1: { key: theme.key, name: theme.name, description: theme.description },
+      lift_score: +agg.lift_total.toFixed(2),
+      signal_count: agg.signals.length,
+      level_2,
+      level_3: props.map((p) => ({
+        id: p.id, name: p.name, type: p.type, fit_score: p.score,
+        activation_note: p.activation_note, city_anchors: p.city_anchors,
+      })),
+      tension,
+    };
+  });
+
+  return { drops, signals, rawSignals };
+}
+
+// Translate a reviewer fix action into adjustments to the next iteration's
+// build options. Honest about what each action does so the iteration log
+// reflects reality.
+function applyAction(action, state) {
+  const next = JSON.parse(JSON.stringify(state));
+  const note = [];
+  switch (action.type) {
+    case "enable_extra_sources":
+      (action.params?.sources || []).forEach((src) => {
+        if (src === "hackernews" && !next.buildOptions.use_hackernews) {
+          next.buildOptions.use_hackernews = true;
+          note.push("enabled Hacker News source");
+        }
+        if (src === "extra_news_queries") {
+          note.push("opt-in for theme-tuned news queries");
+        }
+      });
+      break;
+    case "expand_news_queries": {
+      const adds = action.params?.add || [];
+      next.buildOptions.extra_queries = [...(next.buildOptions.extra_queries || []), ...adds];
+      note.push(`added ${adds.length} news quer${adds.length === 1 ? "y" : "ies"}`);
+      break;
+    }
+    case "widen_l2_per_theme":
+      next.l2PerTheme = Math.max(next.l2PerTheme, action.params?.to || 6);
+      note.push(`L2 per theme → ${next.l2PerTheme}`);
+      break;
+    case "lower_property_floor":
+      next.propertyFloor = Math.min(next.propertyFloor, action.params?.to || 0.2);
+      note.push(`L3 fit floor → ${next.propertyFloor}`);
+      break;
+    case "rebalance_lens_weights":
+      // Pull in the theme-tuned queries for the lenses that need boosting.
+      (action.params?.boost || []).forEach((lens) => {
+        const themeForLens = Object.entries(THEMES).find(([, t]) => t.lenses.includes(lens))?.[0];
+        if (themeForLens) {
+          next.buildOptions.theme_extras = [...(next.buildOptions.theme_extras || []), themeForLens];
+          note.push(`boost lens ${lens} via ${themeForLens} extras`);
+        }
+      });
+      break;
+    default:
+      note.push(`unknown action: ${action.type}`);
+  }
+  return { state: next, note: note.join("; ") };
+}
+
+// ── Main handler — self-improvement loop ─────────────────────────────────────
+const MAX_ITERATIONS = 3;
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
@@ -188,64 +306,45 @@ export default async function handler(req, res) {
     const personaKey = url.searchParams.get("persona") || "urban_gen_z";
     const persona = getPersona(personaKey);
 
-    const rawSignals = await buildSignals();
-    const signals = rawSignals.map((s) => scored(s, persona, brand));
+    // Initial state. The reviewer agent will emit fix actions which update
+    // this state for the next iteration.
+    let state = {
+      buildOptions: { use_hackernews: false, extra_queries: [], theme_extras: [] },
+      l2PerTheme: 4,
+      propertyFloor: 0.3,
+    };
+    const iterations = [];
 
-    // ── Cluster signals into Level-1 themes ─────────────────────────────────
-    const themeAgg = clusterIntoThemes(signals);
-    const themeList = Object.entries(themeAgg)
-      .filter(([, v]) => v.lift_total > 0 && v.signals.length > 0)
-      .sort((a, b) => b[1].lift_total - a[1].lift_total)
-      .slice(0, 4);
+    let final = null;
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const round = await buildDropsOnce({ brand, brandRaw, personaKey, persona, ...state });
+      const freshness = runFreshnessAgent({ signals: round.rawSignals, brief: { generated_at: new Date().toISOString() } });
+      const reviewer  = runReviewerAgent({ signals: round.signals, drops: round.drops, freshness });
 
-    // ── Build each L1 → L2 → L3 → tension structure ─────────────────────────
-    const drops = themeList.map(([themeKey, agg]) => {
-      const theme = THEMES[themeKey];
-      const level_2 = buildLevel2(agg.signals);
-      const level_3 = rankProperties({
-        brand: brandRaw,
-        personaKey,
-        themeKey,
-        signals,
-        limit: 4,
+      iterations.push({
+        iteration: i + 1,
+        overall_score: reviewer.overall_score,
+        section_scores: Object.fromEntries(
+          Object.entries(reviewer.section_scores).map(([k, v]) => [k, { score: v.score, notes: v.notes }])
+        ),
+        actions_emitted: reviewer.fix_actions.map((a) => ({ type: a.type, why: a.why })),
+        applied: [],
       });
-      const tensionDef = pickTensionForTheme(themeKey, persona);
-      const tension = tensionDef
-        ? {
-            key: tensionDef.key,
-            statement: tensionDef.statement,
-            proof_point: fillProofPoint(tensionDef.proof_point_template, signals),
-            reasoning: tensionDef.reasoning,
-          }
-        : null;
 
-      return {
-        level_1: {
-          key: theme.key,
-          name: theme.name,
-          description: theme.description,
-        },
-        lift_score: +agg.lift_total.toFixed(2),
-        signal_count: agg.signals.length,
-        level_2,
-        level_3: level_3.map((p) => ({
-          id: p.id,
-          name: p.name,
-          type: p.type,
-          fit_score: p.score,
-          activation_note: p.activation_note,
-          city_anchors: p.city_anchors,
-        })),
-        tension,
-      };
-    });
+      final = { round, freshness, reviewer };
 
-    // ── Run freshness agent across the underlying signals ───────────────────
+      if (reviewer.passed_10 || i === MAX_ITERATIONS - 1 || reviewer.fix_actions.length === 0) break;
+
+      // Apply each fix action; record what changed.
+      for (const a of reviewer.fix_actions) {
+        const { state: next, note } = applyAction(a, state);
+        state = next;
+        iterations[iterations.length - 1].applied.push({ type: a.type, params: a.params, note });
+      }
+    }
+
+    const dropsQuality = runDropsQualityAgent({ drops: final.round.drops });
     const generated_at = new Date().toISOString();
-    const freshness = runFreshnessAgent({ signals: rawSignals, brief: { generated_at } });
-
-    // ── Drops-specific quality agent (lighter than the pulse-report one) ────
-    const dropsQuality = runDropsQualityAgent({ drops });
 
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
@@ -254,12 +353,19 @@ export default async function handler(req, res) {
       brand,
       persona: { key: persona.key, name: persona.name, short: persona.short },
       generated_at,
-      drops,
-      review: { freshness, quality: dropsQuality },
+      drops: final.round.drops,
+      review: {
+        freshness: final.freshness,
+        quality:   dropsQuality,
+        reviewer:  final.reviewer,
+      },
+      iterations,
       _meta: {
-        signal_count_total: signals.length,
-        theme_count: drops.length,
+        signal_count_total: final.round.signals.length,
+        theme_count: final.round.drops.length,
         brand_weight_applied: BRAND_WEIGHTS[brandKey(brandRaw)] ? "yes" : "default-fallback",
+        iteration_count: iterations.length,
+        final_score: final.reviewer.overall_score,
       },
     }));
   } catch (err) {

@@ -14,7 +14,10 @@
       "maxDuration": 10
     },
     "api/drops.js": {
-      "maxDuration": 15
+      "maxDuration": 30
+    },
+    "api/agent-reviewer.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

@@ -7,6 +7,7 @@ import pulseReportHandler from "../api/pulse-report.js";
 import freshnessHandler from "../api/agent-freshness.js";
 import qualityHandler   from "../api/agent-quality.js";
 import dropsHandler     from "../api/drops.js";
+import reviewerHandler  from "../api/agent-reviewer.js";
 
 const routes = {
   "/api/signals":         signalsHandler,
@@ -14,6 +15,7 @@ const routes = {
   "/api/drops":           dropsHandler,
   "/api/agent-freshness": freshnessHandler,
   "/api/agent-quality":   qualityHandler,
+  "/api/agent-reviewer":  reviewerHandler,
 };
 
 const port = parseInt(process.env.PORT || "8787", 10);
