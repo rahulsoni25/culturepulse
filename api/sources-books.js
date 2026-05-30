@@ -45,17 +45,20 @@ export async function fetchGoogleBooksIndia() {
       `&orderBy=newest&maxResults=20&country=IN&key=${key}`;
     const j = await fetchJSON(url);
     const items = j?.items || [];
-    const out = [];
+    // Since orderBy=newest already sorts recent-first, prefer items with a
+    // year in the last 4 years, but DON'T drop undated ones outright (Google
+    // Books often omits dates on legitimately new titles). Two-pass: dated-
+    // recent first, then fill from undated to guarantee we return something.
+    const dated = [];
+    const undated = [];
     for (const b of items) {
       const v = b.volumeInfo || {};
       const title = (v.title || "").trim();
       if (!title) continue;
-      // Recency filter — published this year or last year only.
-      const yr = parseInt((v.publishedDate || "").slice(0, 4), 10);
-      if (!yr || yr < thisYear - 1) continue;
       const author = (v.authors || [])[0] || "";
-      out.push({
-        query: `${title}${author ? " — " + author : ""} (${yr})`.slice(0, 140),
+      const yr = parseInt((v.publishedDate || "").slice(0, 4), 10);
+      const entry = {
+        query: `${title}${author ? " — " + author : ""}${yr ? " (" + yr + ")" : ""}`.slice(0, 140),
         cat: "Google Books IN",
         lift: 52,
         signal: "cultural_explorer",
@@ -63,10 +66,11 @@ export async function fetchGoogleBooksIndia() {
         source: "books",
         url: v.infoLink || null,
         hours_ago: 0,
-      });
-      if (out.length >= 6) break;
+      };
+      if (yr && yr >= thisYear - 4) dated.push(entry);
+      else if (!yr) undated.push(entry);
     }
-    return out;
+    return [...dated, ...undated].slice(0, 6);
   } catch {
     return [];
   }
