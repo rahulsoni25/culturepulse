@@ -85,9 +85,16 @@ function classifyApp(categoryLabel, appName) {
   return "cultural_explorer";
 }
 
-async function fetchAppleTopApps() {
+// Dating apps in the charts are a relationship-culture signal worth its own lens.
+function classifyAppFull(category, name) {
+  if (/hinge|bumble|tinder|dating|aisle|truly\s?madly/i.test(name)) return "social_identity";
+  return classifyApp(category, name);
+}
+
+// Shared parser for any Apple app chart (free / grossing / paid).
+async function fetchAppleAppChart(feedUrl, chartLabel, sourceTag) {
   try {
-    const r = await fetchWithTimeout("https://itunes.apple.com/in/rss/topfreeapplications/limit=20/json");
+    const r = await fetchWithTimeout(feedUrl);
     if (!r.ok) return [];
     const j = await r.json();
     const entries = j?.feed?.entry || [];
@@ -97,18 +104,17 @@ async function fetchAppleTopApps() {
       const name = e["im:name"]?.label || "";
       const category = e.category?.attributes?.label || "";
       if (!name) continue;
-      const lens = classifyApp(category, name);
-      // Only surface apps that map to a cultural lens (skip utilities/finance
-      // that aren't behavioural-culture signals).
-      if (lens === "cultural_explorer" && /aadhaar|paytm|phonepe|gpay|bank|sbi/i.test(name)) continue;
+      const lens = classifyAppFull(category, name);
+      // Skip pure finance/utility apps that aren't cultural-behaviour signals.
+      if (lens === "cultural_explorer" && /aadhaar|paytm|phonepe|gpay|bhim|bank|sbi|hdfc|icici/i.test(name)) continue;
       const lift = Math.max(50, 82 - i * 2);
       out.push({
-        query: `${name} trending in India app charts (${category})`.slice(0, 140),
-        cat: "Apple Top Apps IN",
+        query: `${name} — ${chartLabel} (${category})`.slice(0, 140),
+        cat: `Apple ${chartLabel} IN`,
         lift,
         signal: lens,
         city: "India",
-        source: "apple_apps",
+        source: sourceTag,
         rank: i + 1,
         app_category: category,
         url: e.link?.attributes?.href || null,
@@ -119,6 +125,24 @@ async function fetchAppleTopApps() {
   } catch {
     return [];
   }
+}
+
+async function fetchAppleTopApps() {
+  // Top FREE apps = adoption behaviour (Blinkit, Rapido, Instagram).
+  return fetchAppleAppChart(
+    "https://itunes.apple.com/in/rss/topfreeapplications/limit=20/json",
+    "Top Free App", "apple_apps"
+  );
+}
+
+async function fetchAppleTopGrossing() {
+  // Top GROSSING = SPEND behaviour — what India actually pays for in-app.
+  // This is the closest free proxy to commerce/quick-comm spend (gaming,
+  // OTT subscriptions, dating premium all surface here).
+  return fetchAppleAppChart(
+    "https://itunes.apple.com/in/rss/topgrossingapplications/limit=15/json",
+    "Top Grossing App", "apple_grossing"
+  );
 }
 
 // ── PODCASTS (India) ──────────────────────────────────────────────────────────
@@ -153,10 +177,11 @@ async function fetchApplePodcasts() {
 }
 
 export async function fetchAppleAll() {
-  const [songs, apps, podcasts] = await Promise.all([
+  const [songs, apps, grossing, podcasts] = await Promise.all([
     fetchAppleTopSongs(),
     fetchAppleTopApps(),
+    fetchAppleTopGrossing(),
     fetchApplePodcasts(),
   ]);
-  return [...songs, ...apps, ...podcasts];
+  return [...songs, ...apps, ...grossing, ...podcasts];
 }
