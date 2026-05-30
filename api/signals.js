@@ -49,6 +49,7 @@ const SOURCE_CONFIDENCE = {
   reddit: 0.84, youtube: 0.86,
   publisher: 0.83, wiki_vernacular: 0.88, mastodon: 0.72, musicbrainz: 0.80,
   apple_music: 0.90, apple_apps: 0.87, apple_podcast: 0.78,
+  youtube_api: 0.89, spotify: 0.91,
   evergreen: 0.65,
 };
 
@@ -252,6 +253,10 @@ async function buildSignals(options = {}) {
   const useMastodon     = options.use_mastodon     !== false;
   const useMusicBrainz  = options.use_musicbrainz  !== false;
   const useApple        = options.use_apple        !== false;
+  // Key-gated sources: auto-on ONLY when the env credentials exist. They
+  // return [] otherwise, so prod is unchanged until keys are added.
+  const useYouTubeApi   = !!process.env.YOUTUBE_API_KEY    && options.use_youtube_api !== false;
+  const useSpotify      = !!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET) && options.use_spotify !== false;
 
   // Lazy-load source modules only if at least one fetcher in that module is on.
   const socialMod      = (useReddit || useYouTube)  ? await import("./sources-social.js")     : null;
@@ -272,6 +277,14 @@ async function buildSignals(options = {}) {
   if (useMastodon)    work.push(globalMod.fetchMastodonTrending());
   if (useMusicBrainz) work.push(globalMod.fetchMusicBrainzIndia());
   if (useApple)       work.push(appleMod.fetchAppleAll());
+  if (useYouTubeApi) {
+    const { fetchYouTubeDataAPI } = await import("./sources-youtube-api.js");
+    work.push(fetchYouTubeDataAPI());
+  }
+  if (useSpotify) {
+    const { fetchSpotifyIndia } = await import("./sources-spotify.js");
+    work.push(fetchSpotifyIndia());
+  }
   if (options.use_hackernews) {
     const { fetchHackerNews } = await import("./sources-extra.js");
     work.push(fetchHackerNews());
@@ -281,7 +294,10 @@ async function buildSignals(options = {}) {
   // Pop trailing entries in reverse-push order: hn (opt-in), musicbrainz,
   // mastodon, vernacular, publishers, youtube, reddit. Anything not enabled
   // is skipped via the `?:` so the indices stay aligned.
+  // Pop in REVERSE of push order: hn, spotify, youtube_api, apple, musicbrainz, ...
   const hn          = options.use_hackernews ? rest.pop() : [];
+  const spotify     = useSpotify             ? rest.pop() : [];
+  const youtubeApi  = useYouTubeApi          ? rest.pop() : [];
   const apple       = useApple               ? rest.pop() : [];
   const musicbrainz = useMusicBrainz         ? rest.pop() : [];
   const mastodon    = useMastodon            ? rest.pop() : [];
@@ -302,6 +318,7 @@ async function buildSignals(options = {}) {
     ...trends, ...wiki, ...news,
     ...reddit, ...youtube,
     ...publishers, ...vernacular, ...mastodon, ...musicbrainz, ...apple,
+    ...youtubeApi, ...spotify,
     ...hn, ...evergreen,
   ];
 
@@ -319,6 +336,8 @@ async function buildSignals(options = {}) {
     from_wiki_vernacular: s.source === "wiki_vernacular",
     from_mastodon:        s.source === "mastodon",
     from_musicbrainz:     s.source === "musicbrainz",
+    from_youtube_api:     s.source === "youtube_api",
+    from_spotify:         s.source === "spotify",
     from_hn:              s.source === "hn",
     from_evergreen:       s.source === "evergreen",
     fetched_at: new Date().toISOString(),
