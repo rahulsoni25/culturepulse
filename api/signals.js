@@ -50,6 +50,7 @@ const SOURCE_CONFIDENCE = {
   publisher: 0.83, wiki_vernacular: 0.88, mastodon: 0.72, musicbrainz: 0.80,
   apple_music: 0.90, apple_apps: 0.87, apple_podcast: 0.78,
   youtube_api: 0.89, spotify: 0.91,
+  lastfm: 0.88, ticketmaster: 0.85, books: 0.74,
   evergreen: 0.65,
 };
 
@@ -257,6 +258,9 @@ async function buildSignals(options = {}) {
   // return [] otherwise, so prod is unchanged until keys are added.
   const useYouTubeApi   = !!process.env.YOUTUBE_API_KEY    && options.use_youtube_api !== false;
   const useSpotify      = !!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET) && options.use_spotify !== false;
+  const useLastfm       = !!process.env.LASTFM_API_KEY        && options.use_lastfm !== false;
+  const useTicketmaster = !!process.env.TICKETMASTER_API_KEY  && options.use_ticketmaster !== false;
+  const useBooks        = !!process.env.GOOGLE_BOOKS_API_KEY  && options.use_books !== false;
 
   // Lazy-load source modules only if at least one fetcher in that module is on.
   const socialMod      = (useReddit || useYouTube)  ? await import("./sources-social.js")     : null;
@@ -285,6 +289,18 @@ async function buildSignals(options = {}) {
     const { fetchSpotifyIndia } = await import("./sources-spotify.js");
     work.push(fetchSpotifyIndia());
   }
+  if (useLastfm) {
+    const { fetchLastfmIndia } = await import("./sources-lastfm.js");
+    work.push(fetchLastfmIndia());
+  }
+  if (useTicketmaster) {
+    const { fetchTicketmasterIndia } = await import("./sources-ticketmaster.js");
+    work.push(fetchTicketmasterIndia());
+  }
+  if (useBooks) {
+    const { fetchGoogleBooksIndia } = await import("./sources-books.js");
+    work.push(fetchGoogleBooksIndia());
+  }
   if (options.use_hackernews) {
     const { fetchHackerNews } = await import("./sources-extra.js");
     work.push(fetchHackerNews());
@@ -294,11 +310,15 @@ async function buildSignals(options = {}) {
   // Pop trailing entries in reverse-push order: hn (opt-in), musicbrainz,
   // mastodon, vernacular, publishers, youtube, reddit. Anything not enabled
   // is skipped via the `?:` so the indices stay aligned.
-  // Pop in REVERSE of push order: hn, spotify, youtube_api, apple, musicbrainz, ...
-  const hn          = options.use_hackernews ? rest.pop() : [];
-  const spotify     = useSpotify             ? rest.pop() : [];
-  const youtubeApi  = useYouTubeApi          ? rest.pop() : [];
-  const apple       = useApple               ? rest.pop() : [];
+  // Pop in REVERSE of push order:
+  // hn, books, ticketmaster, lastfm, spotify, youtube_api, apple, musicbrainz, ...
+  const hn           = options.use_hackernews ? rest.pop() : [];
+  const books        = useBooks              ? rest.pop() : [];
+  const ticketmaster = useTicketmaster       ? rest.pop() : [];
+  const lastfm       = useLastfm             ? rest.pop() : [];
+  const spotify      = useSpotify            ? rest.pop() : [];
+  const youtubeApi   = useYouTubeApi         ? rest.pop() : [];
+  const apple        = useApple              ? rest.pop() : [];
   const musicbrainz = useMusicBrainz         ? rest.pop() : [];
   const mastodon    = useMastodon            ? rest.pop() : [];
   const vernacular  = useVernacular          ? rest.pop() : [];
@@ -318,7 +338,7 @@ async function buildSignals(options = {}) {
     ...trends, ...wiki, ...news,
     ...reddit, ...youtube,
     ...publishers, ...vernacular, ...mastodon, ...musicbrainz, ...apple,
-    ...youtubeApi, ...spotify,
+    ...youtubeApi, ...spotify, ...lastfm, ...ticketmaster, ...books,
     ...hn, ...evergreen,
   ];
 
@@ -338,6 +358,9 @@ async function buildSignals(options = {}) {
     from_musicbrainz:     s.source === "musicbrainz",
     from_youtube_api:     s.source === "youtube_api",
     from_spotify:         s.source === "spotify",
+    from_lastfm:          s.source === "lastfm",
+    from_ticketmaster:    s.source === "ticketmaster",
+    from_books:           s.source === "books",
     from_hn:              s.source === "hn",
     from_evergreen:       s.source === "evergreen",
     fetched_at: new Date().toISOString(),
