@@ -33,26 +33,36 @@ export function lastfmAvailable() {
 }
 
 // India top tracks (geo.getTopTracks) — what the country is scrobbling.
+// NOTE: Last.fm's India scrobbler base skews heavily to one or two fandoms
+// (currently K-pop), which can monopolise the chart. We cap to 2 tracks per
+// artist so the signal reflects breadth, not a single fan-club's volume.
 async function fetchTopTracks(key) {
   const url =
     `https://ws.audioscrobbler.com/2.0/?method=geo.gettoptracks&country=india` +
-    `&limit=12&api_key=${key}&format=json`;
+    `&limit=50&api_key=${key}&format=json`;
   const j = await fetchJSON(url);
   const tracks = j?.tracks?.track || [];
-  return tracks.slice(0, 8).map((t, i) => {
-    const lift = Math.max(58, 88 - i * 3);
-    return {
-      query: `${t.name || ""} — ${t.artist?.name || ""}`.slice(0, 140),
+  const perArtist = {};
+  const out = [];
+  for (const t of tracks) {
+    const artist = t.artist?.name || "";
+    perArtist[artist] = (perArtist[artist] || 0) + 1;
+    if (perArtist[artist] > 2) continue; // cap monoculture
+    const i = out.length;
+    out.push({
+      query: `${t.name || ""} — ${artist}`.slice(0, 140),
       cat: "Last.fm Top Tracks IN",
-      lift,
+      lift: Math.max(58, 88 - i * 3),
       signal: "music_streaming",
       city: "India",
       source: "lastfm",
       rank: i + 1,
       url: t.url || null,
       hours_ago: 0,
-    };
-  });
+    });
+    if (out.length >= 8) break;
+  }
+  return out;
 }
 
 // India top artists (geo.getTopArtists) — tribe-level signal.

@@ -35,28 +35,36 @@ export async function fetchGoogleBooksIndia() {
   const key = process.env.GOOGLE_BOOKS_API_KEY;
   if (!key) return []; // dormant without key
   try {
-    // Newest India-relevant titles, ordered by recency.
+    // "subject:India + orderBy=newest" returns reprints of old classics, so
+    // instead query for recently-published Indian-interest titles and keep
+    // only those published in the last ~2 years. Better "what India reads now".
+    const thisYear = new Date().getFullYear();
     const url =
       `https://www.googleapis.com/books/v1/volumes` +
-      `?q=subject:India&orderBy=newest&maxResults=12&country=IN&key=${key}`;
+      `?q=${encodeURIComponent("indian author fiction OR indian politics OR contemporary india")}` +
+      `&orderBy=newest&maxResults=20&country=IN&key=${key}`;
     const j = await fetchJSON(url);
     const items = j?.items || [];
     const out = [];
-    for (const b of items.slice(0, 8)) {
+    for (const b of items) {
       const v = b.volumeInfo || {};
       const title = (v.title || "").trim();
       if (!title) continue;
+      // Recency filter — published this year or last year only.
+      const yr = parseInt((v.publishedDate || "").slice(0, 4), 10);
+      if (!yr || yr < thisYear - 1) continue;
       const author = (v.authors || [])[0] || "";
       out.push({
-        query: `${title}${author ? " — " + author : ""}`.slice(0, 140),
+        query: `${title}${author ? " — " + author : ""} (${yr})`.slice(0, 140),
         cat: "Google Books IN",
-        lift: 52, // slower-moving cultural signal, modest lift
+        lift: 52,
         signal: "cultural_explorer",
         city: "India",
         source: "books",
         url: v.infoLink || null,
         hours_ago: 0,
       });
+      if (out.length >= 6) break;
     }
     return out;
   } catch {
