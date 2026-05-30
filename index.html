@@ -8,33 +8,65 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
-  /* Dark theme (default) */
-  --bg:#07080d;--bg2:#0d0f18;--bg3:#111420;--bg4:#171a28;
-  --b1:#1e2235;--b2:#252840;
-  --t1:#e8eaf2;--t2:#8b90a8;--t3:#4a4f68;
-  --blue:#3d7fff;--bdim:#1a2a4a;
-  --green:#1db87a;--gdim:#0d2a1e;
-  --amber:#f0a830;--adim:#2a1f0a;
-  --red:#e8453c;--rdim:#2a0d0c;
-  --purple:#8b6fff;--pdim:#1a1530;
-  --teal:#1dc8c8;
-  --chart-grid:rgba(255,255,255,.04);
+  /* Dark theme (default) — slightly deeper, more separation between layers */
+  --bg:#08090f;--bg2:#10131e;--bg3:#171b2a;--bg4:#1f2436;
+  --b1:#222840;--b2:#2e3550;
+  --t1:#eef0f7;--t2:#9298b2;--t3:#5a607a;
+  --blue:#4d8bff;--bdim:#16294d;
+  --green:#22c585;--gdim:#0e2d20;
+  --amber:#f4ad36;--adim:#2c2009;
+  --red:#f0524a;--rdim:#2d0e0d;
+  --purple:#9a7dff;--pdim:#1c1636;
+  --teal:#1dd0d0;
+  --chart-grid:rgba(255,255,255,.05);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.25);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.3);
+  /* Type scale — 5 steps. Replaces the old 13-size sprawl. */
+  --fs-xs:11px;  /* mono labels, meta */
+  --fs-sm:13px;  /* body, secondary */
+  --fs-md:15px;  /* emphasised body, card titles */
+  --fs-lg:20px;  /* section / stat */
+  --fs-xl:34px;  /* hero numbers */
+  /* Spacing scale (8px base) */
+  --sp-1:6px;--sp-2:10px;--sp-3:16px;--sp-4:24px;--sp-5:36px;
+  --r-sm:8px;--r-md:11px;--r-lg:14px;
   --fm:'Syne',sans-serif;--mono:'DM Mono',monospace;
 }
 :root[data-theme="light"]{
-  --bg:#fafbfc;--bg2:#f2f4f8;--bg3:#e8ecf3;--bg4:#dde2ed;
-  --b1:#d8dde8;--b2:#c5cbd9;
-  --t1:#0a0d18;--t2:#4a4f68;--t3:#7a7f95;
-  --blue:#1e63ff;--bdim:#e0e9ff;
-  --green:#0f9d62;--gdim:#d6f4e8;
-  --amber:#d68a18;--adim:#fdf0d8;
-  --red:#d83a31;--rdim:#fde0de;
-  --purple:#6a4dff;--pdim:#ebe4ff;
+  --bg:#f7f8fb;--bg2:#ffffff;--bg3:#f1f4f9;--bg4:#e6eaf2;
+  --b1:#e3e7f0;--b2:#cdd4e2;
+  --t1:#0c0f1a;--t2:#525873;--t3:#878da3;
+  --blue:#2563eb;--bdim:#e4edff;
+  --green:#0e9d62;--gdim:#d7f4e8;
+  --amber:#cf8714;--adim:#fcf0d6;
+  --red:#dc3a32;--rdim:#fde0de;
+  --purple:#6a4dff;--pdim:#ece5ff;
   --teal:#0eaaaa;
   --chart-grid:rgba(0,0,0,.06);
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 6px 20px rgba(16,24,40,.08);
+  --shadow-sm:0 1px 3px rgba(16,24,40,.06);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh;transition:background-color .25s ease,color .25s ease}
+body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh;transition:background-color .25s ease,color .25s ease;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.main{max-width:1280px;margin:0 auto;padding:var(--sp-4) var(--sp-4) var(--sp-5)}
+
+/* ── REDESIGN POLISH LAYER ───────────────────────────────────────────────
+   Cohesive depth, spacing and type rhythm applied over the base components.
+   Bumps the tiniest 8–9px text to a readable floor and gives cards real
+   elevation instead of flat 1px borders. ─────────────────────────────── */
+/* Card-like surfaces get soft elevation + generous radius */
+.ks,.gtrends-panel,.fbar,.report-block,.novice-card,.drop-card,.tension-card,
+.htr-card,.sec,.drill,.bub,.mc{box-shadow:var(--shadow-sm)}
+.ks,.gtrends-panel,.fbar,.report-block{border-radius:var(--r-lg)}
+/* Readability floor: no body/meta text below 10px; bump the 8–9px labels */
+.ks-label,.gt-category,.gt-signal span,.fg label,.plan-credits,.plan-badge,
+.sig-table th,.stag,.nc-stat-l,.dc-stat-l,.mcl,.it,.gt-badge,.gt-signal,
+.rb-label,.pill,.cr-label{font-size:10px !important}
+.ks-sub,.gt-query,.nc-explain,.dc-why,.tc-i,.htr-b,.rb-content,.bub,
+.mcs,.alert-text{font-size:var(--fs-sm) !important}
+/* Section heading rhythm */
+.sec{margin-bottom:var(--sp-4)}
+.ey{font-size:10px !important;margin-bottom:var(--sp-3) !important}
 .theme-toggle{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg2);border:1px solid var(--b1);border-radius:8px;color:var(--t2);cursor:pointer;font-size:14px;line-height:1;padding:0;transition:all .15s}
 .theme-toggle:hover{color:var(--t1);border-color:var(--b2)}
 .theme-toggle svg{width:15px;height:15px;display:block}
@@ -42,8 +74,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
 
-/* NAV */
-.nav{display:flex;justify-content:space-between;align-items:center;padding:12px 24px;border-bottom:1px solid var(--b1);background:var(--bg);position:sticky;top:0;z-index:100;gap:12px}
+/* NAV — tier 1: brand + utilities */
+.nav{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;border-bottom:1px solid var(--b1);background:var(--bg);position:sticky;top:0;z-index:101;gap:12px}
 .nav-brand{display:flex;align-items:center;gap:10px}
 .nlogo{width:30px;height:30px;background:var(--blue);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;font-family:var(--mono)}
 .ntitle{font-size:15px;font-weight:800;letter-spacing:-.03em}
@@ -67,13 +99,15 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
 .mode-btn{padding:5px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--t3);cursor:pointer;border-radius:6px;border:none;background:transparent;transition:all .15s}
 .mode-btn.active{background:var(--bg3);color:var(--t1);border:1px solid var(--b2)}
 
-/* NAV TABS */
-.nav-tabs{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--b1);border-radius:8px;padding:3px}
-.ntab{padding:5px 12px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--t3);cursor:pointer;border-radius:5px;border:none;background:transparent;transition:all .15s;white-space:nowrap}
+/* NAV TABS — tier 2: full-width underlined tab bar */
+.tabbar{position:sticky;top:57px;z-index:100;background:var(--bg);border-bottom:1px solid var(--b1)}
+.nav-tabs{display:flex;gap:2px;max-width:1280px;margin:0 auto;padding:0 24px;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.ntab{padding:13px 16px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--t3);cursor:pointer;border:none;background:transparent;transition:color .15s;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px}
 .ntab:hover{color:var(--t2)}
-.ntab.active{background:var(--bg3);color:var(--t1);border:1px solid var(--b2)}
+.ntab.active{color:var(--t1);border-bottom-color:var(--blue)}
 
-.main{padding:16px 24px;max-width:1400px;margin:0 auto}
+.main{padding:var(--sp-4) 24px var(--sp-5);max-width:1280px;margin:0 auto}
 .sec{margin-bottom:24px}
 .ey{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.11em;color:var(--t3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .ey::after{content:'';flex:1;height:1px;background:var(--b1)}
@@ -106,20 +140,23 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
 .modal-close{font-family:var(--mono);font-size:11px;color:var(--t3);cursor:pointer;text-align:center;margin-top:8px;padding:6px}
 .modal-close:hover{color:var(--t2)}
 
-/* FILTER BAR */
-.fbar{background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:14px 18px;margin-bottom:16px}
-.frow{display:grid;gap:10px;margin-bottom:10px}
-.frow7{grid-template-columns:repeat(7,minmax(0,1fr))}
-.frow5{grid-template-columns:repeat(4,minmax(0,1fr)) auto}
-.fg label{display:block;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:4px}
-.fg select,.fg input{width:100%;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);font-size:11px;font-family:var(--mono);padding:7px 10px;border-radius:7px;cursor:pointer;appearance:none}
-.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%234a4f68'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+/* FILTER BAR — compact primary row + collapsible advanced */
+.fbar{background:var(--bg2);border:1px solid var(--b1);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:var(--sp-4)}
+.fbar-primary{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.fbar-primary .fg{flex:1;min-width:150px}
+.fbar-adv{display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)}
+.fbar-adv.open{display:grid}
+.fg label{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:5px}
+.fg select,.fg input{width:100%;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);font-size:12px;font-family:var(--mono);padding:9px 28px 9px 11px;border-radius:var(--r-sm);cursor:pointer;appearance:none;text-overflow:ellipsis}
+.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%235a607a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center}
 .fg select:focus,.fg input:focus{outline:none;border-color:var(--blue)}
-.abtn{background:var(--blue);color:#fff;border:none;border-radius:7px;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;cursor:pointer;padding:0 18px;text-transform:uppercase;height:33px;align-self:end;transition:background .15s;position:relative}
-.abtn:hover{background:#5590ff}
-.abtn-cost{position:absolute;top:-8px;right:-4px;background:var(--amber);color:#000;font-size:8px;padding:1px 5px;border-radius:999px;font-family:var(--mono)}
-.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--b1)}
-.pill{font-family:var(--mono);font-size:10px;color:var(--t2);background:var(--bg3);border:1px solid var(--b1);border-radius:999px;padding:3px 10px}
+.abtn{background:var(--blue);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;cursor:pointer;padding:0 20px;text-transform:uppercase;height:38px;transition:background .15s;position:relative;white-space:nowrap}
+.abtn:hover{background:#6a9eff}
+.abtn-cost{position:absolute;top:-8px;right:-6px;background:var(--amber);color:#000;font-size:9px;padding:1px 6px;border-radius:999px;font-family:var(--mono)}
+.morebtn{background:var(--bg3);color:var(--t2);border:1px solid var(--b1);border-radius:var(--r-sm);font-family:var(--mono);font-size:11px;cursor:pointer;padding:0 14px;height:38px;white-space:nowrap;transition:all .15s}
+.morebtn:hover{border-color:var(--b2);color:var(--t1)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)}
+.pill{font-family:var(--mono);font-size:10px;color:var(--t2);background:var(--bg3);border:1px solid var(--b1);border-radius:999px;padding:4px 11px}
 
 /* ALERTS */
 .alert-banner{display:flex;align-items:center;gap:12px;background:var(--rdim);border:1px solid var(--red);border-radius:10px;padding:11px 16px;margin-bottom:12px;animation:slideIn .3s ease}
@@ -363,21 +400,13 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
         <div class="ntitle">CulturePulse</div>
         <span class="nbeta">BETA</span>
       </div>
-      <div class="nsub">Brand Culture Intelligence · For Creative Professionals</div>
+      <div class="nsub">Brand Culture Intelligence</div>
     </div>
   </div>
   <div class="nav-right">
     <div class="mode-toggle">
       <button class="mode-btn active" id="mode-novice" onclick="setMode('novice')">Simple</button>
       <button class="mode-btn" id="mode-pro" onclick="setMode('pro')">Pro</button>
-    </div>
-    <div class="nav-tabs">
-      <button class="ntab active" onclick="switchTab('signals')">Signal Feed</button>
-      <button class="ntab" onclick="switchTab('drops')">Culture Drops</button>
-      <button class="ntab" onclick="switchTab('fit')">Culture Fit</button>
-      <button class="ntab" onclick="switchTab('tensions')">Tensions</button>
-      <button class="ntab" onclick="switchTab('howto')">How to Read</button>
-      <button class="ntab" onclick="switchTab('report')">Pulse Report</button>
     </div>
     <div class="credits-badge">
       <div>
@@ -392,15 +421,25 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle light / dark mode">
       <span id="theme-icon">🌙</span>
     </button>
-    <div class="live-pill"><div class="ldot"></div>Live feed</div>
+    <div class="live-pill"><div class="ldot"></div>Live</div>
   </div>
 </nav>
+<div class="tabbar">
+  <div class="nav-tabs">
+    <button class="ntab active" onclick="switchTab('signals')">Signal Feed</button>
+    <button class="ntab" onclick="switchTab('drops')">Culture Drops</button>
+    <button class="ntab" onclick="switchTab('fit')">Culture Fit</button>
+    <button class="ntab" onclick="switchTab('tensions')">Tensions</button>
+    <button class="ntab" onclick="switchTab('howto')">How to Read</button>
+    <button class="ntab" onclick="switchTab('report')">Pulse Report</button>
+  </div>
+</div>
 
 <div class="main">
 
 <!-- FILTERS -->
 <div class="fbar">
-  <div class="frow frow7">
+  <div class="fbar-primary">
     <div class="fg"><label>Brand</label>
       <select id="fbrand"><option value="tuborg">Tuborg</option><option value="heineken">Heineken</option><option value="kingfisher">Kingfisher</option><option value="bira91">Bira91</option><option value="custom">Custom</option></select></div>
     <div class="fg"><label>Age group</label>
@@ -409,14 +448,16 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
       <select id="fcity"><option value="0">Metro + T1 + T2</option><option value="1">Metro only</option><option value="2">T1 + T2 only</option></select></div>
     <div class="fg"><label>Signal lens</label>
       <select id="flens"><option value="0">All signals</option><option value="1">Music + festivals</option><option value="2">Gaming + tech</option><option value="3">Food + lifestyle</option><option value="4">Fashion + identity</option></select></div>
+    <button class="morebtn" id="morebtn" onclick="toggleAdvFilters()">More filters ▾</button>
+    <button class="abtn" onclick="go()">Run analysis ›<span class="abtn-cost">-2 cr</span></button>
+  </div>
+  <div class="fbar-adv" id="fbar-adv">
     <div class="fg"><label>Time window</label>
       <select id="ftime"><option value="0">Last 24 hours</option><option value="1">Last 3 days</option><option value="2">Last 7 days</option><option value="3">Last 30 days</option></select></div>
     <div class="fg"><label>Drop threshold</label>
       <select id="fdrop"><option value="0">Any signal</option><option value="1">2× + lift</option><option value="2">3× + lift</option><option value="3">5× + major</option></select></div>
     <div class="fg"><label>Min confidence</label>
       <select id="fconf"><option value="0">All</option><option value="1">≥ 70%</option><option value="2">≥ 85%</option><option value="3">≥ 90%</option></select></div>
-  </div>
-  <div class="frow frow5">
     <div class="fg"><label>Google Trends category</label>
       <select id="fgt"><option value="0">Entertainment</option><option value="1">Music + Artists</option><option value="2">Sports</option><option value="3">Food + Drink</option><option value="4">Fashion + Style</option><option value="5">Gaming</option></select></div>
     <div class="fg"><label>Territory filter</label>
@@ -425,7 +466,6 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
       <select id="ftype"><option value="0">All types</option><option value="1">Behaviour only</option><option value="2">Feeling only</option></select></div>
     <div class="fg"><label>Demographics</label>
       <select id="fdemo"><option value="0">Skew male 60/40</option><option value="1">Balanced 50/50</option><option value="2">Skew female 60/40</option></select></div>
-    <button class="abtn" onclick="go()">Run analysis ›<span class="abtn-cost">-2 cr</span></button>
   </div>
   <div class="pills" id="pills"></div>
 </div>
@@ -1621,6 +1661,13 @@ function toggleTrust(){
   var isOpen=d.style.display!=="none";
   d.style.display=isOpen?"none":"block";
   b.textContent=isOpen?"show detail ▾":"hide detail ▴";
+}
+function toggleAdvFilters(){
+  var adv=document.getElementById("fbar-adv");
+  var btn=document.getElementById("morebtn");
+  if(!adv||!btn) return;
+  var open=adv.classList.toggle("open");
+  btn.textContent=open?"Fewer filters ▴":"More filters ▾";
 }
 function toggleIterLog(){
   var d=document.getElementById("iter-log");
