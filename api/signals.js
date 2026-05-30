@@ -48,6 +48,7 @@ const SOURCE_CONFIDENCE = {
   trends: 0.92, news: 0.82, wiki: 0.78, hn: 0.75,
   reddit: 0.84, youtube: 0.86,
   publisher: 0.83, wiki_vernacular: 0.88, mastodon: 0.72, musicbrainz: 0.80,
+  apple_music: 0.90, apple_apps: 0.87, apple_podcast: 0.78,
   evergreen: 0.65,
 };
 
@@ -250,12 +251,14 @@ async function buildSignals(options = {}) {
   const useVernacular   = options.use_vernacular   !== false;
   const useMastodon     = options.use_mastodon     !== false;
   const useMusicBrainz  = options.use_musicbrainz  !== false;
+  const useApple        = options.use_apple        !== false;
 
   // Lazy-load source modules only if at least one fetcher in that module is on.
   const socialMod      = (useReddit || useYouTube)  ? await import("./sources-social.js")     : null;
   const publishersMod  = usePublishers              ? await import("./sources-publishers.js") : null;
   const vernacularMod  = useVernacular              ? await import("./sources-vernacular.js") : null;
   const globalMod      = (useMastodon || useMusicBrainz) ? await import("./sources-global.js") : null;
+  const appleMod       = useApple                   ? await import("./sources-apple.js")      : null;
 
   const work = [
     fetchGoogleTrendsIN(),
@@ -268,6 +271,7 @@ async function buildSignals(options = {}) {
   if (useVernacular)  work.push(vernacularMod.fetchVernacularWikipediaAll());
   if (useMastodon)    work.push(globalMod.fetchMastodonTrending());
   if (useMusicBrainz) work.push(globalMod.fetchMusicBrainzIndia());
+  if (useApple)       work.push(appleMod.fetchAppleAll());
   if (options.use_hackernews) {
     const { fetchHackerNews } = await import("./sources-extra.js");
     work.push(fetchHackerNews());
@@ -278,6 +282,7 @@ async function buildSignals(options = {}) {
   // mastodon, vernacular, publishers, youtube, reddit. Anything not enabled
   // is skipped via the `?:` so the indices stay aligned.
   const hn          = options.use_hackernews ? rest.pop() : [];
+  const apple       = useApple               ? rest.pop() : [];
   const musicbrainz = useMusicBrainz         ? rest.pop() : [];
   const mastodon    = useMastodon            ? rest.pop() : [];
   const vernacular  = useVernacular          ? rest.pop() : [];
@@ -296,7 +301,7 @@ async function buildSignals(options = {}) {
   const all = [
     ...trends, ...wiki, ...news,
     ...reddit, ...youtube,
-    ...publishers, ...vernacular, ...mastodon, ...musicbrainz,
+    ...publishers, ...vernacular, ...mastodon, ...musicbrainz, ...apple,
     ...hn, ...evergreen,
   ];
 

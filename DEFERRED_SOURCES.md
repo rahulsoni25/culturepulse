@@ -4,17 +4,40 @@
 > needed to enable it. The point: never promise coverage we can't deliver, and
 > never let a missing source silently leave gaps in the brief.
 
-## ✅ LIVE NOW (free, no setup)
+## ✅ LIVE NOW (free, no setup) — 12 sources
 
 | Source | What it surfaces | How wired |
 |---|---|---|
 | **Google Trends India RSS** | Daily rising search queries with traffic counts | `api/signals.js → fetchGoogleTrendsIN` |
-| **Google News India** (per topic) | Editorial framing of cultural topics, ≤7d window | `api/signals.js → fetchNews` (9 default query lanes) |
+| **Google News India** (per topic) | Editorial framing of cultural topics, ≤3d window | `api/signals.js → fetchNews` (9 default query lanes) |
 | **Wikipedia most-read (India-filtered)** | What audiences are looking up | `api/signals.js → fetchWikipediaTop` |
 | **Reddit Atom feeds** (14 subs) | Where Indian audiences actually post: bollywood, hip-hop, food, gaming, cricket, cities, streetwear, memes, Gen Z | `api/sources-social.js → fetchRedditAll` |
 | **YouTube channel RSS** (10 channels) | T-Series, Sony Music, Mass Appeal, OML, Curly Tales, Cricbuzz, etc. — last 2 weeks of uploads | `api/sources-social.js → fetchYouTubeAll` |
+| **Indian publishers RSS** (4) | NDTV Lifestyle, HT Lifestyle, The Hindu, Scroll.in — editorial/opinion voice | `api/sources-publishers.js` |
+| **Vernacular Wikipedia** (hi/ta/bn) ★ | What Hindi / Tamil / Bengali communities are reading — the wedge no competitor has | `api/sources-vernacular.js` |
+| **Mastodon trending tags** | Global Gen-Z + diaspora signal | `api/sources-global.js → fetchMastodonTrending` |
+| **MusicBrainz events (India)** | Structured concert / festival data | `api/sources-global.js → fetchMusicBrainzIndia` |
+| **Apple Top Songs India** ★ | Real chart behaviour — what India buys/streams | `api/sources-apple.js → fetchAppleTopSongs` |
+| **Apple Top Free Apps India** ★ | Behavioural truth — Rapido/Blinkit/JioHotstar/ChatGPT rank = how India lives now | `api/sources-apple.js → fetchAppleTopApps` |
+| **Apple Podcasts India** | Discovery / cultural-explorer signal | `api/sources-apple.js → fetchApplePodcasts` |
 | **Hacker News (India-tagged)** | Cross-cut digital culture, opt-in via reviewer | `api/sources-extra.js → fetchHackerNews` |
 | **Evergreen pool** (35 perennial signals) | Backstop when live data is thin (IPL season, Diwali, indie venues, etc.) | `api/sources-evergreen.js` |
+
+Signal pool now runs **100-144 per refresh** across these sources.
+
+### Easy add-ons not yet wired (same pattern, ~10 min each, no key)
+
+These probed `200 OK` and could be folded in trivially if useful:
+
+| Source | Adds |
+|---|---|
+| Apple Top **Albums** India | album-level music behaviour |
+| Apple Top **Music Videos** India | visual-music culture |
+| Apple Top **Paid Apps** India | spend-intent behaviour (vs free) |
+| Apple **Top Podcasts** (by genre) | richer podcast charting |
+| Google **Trends by category** RSS (`&category=N`) | category-scoped trend lanes (entertainment, sports, etc.) |
+| Reddit **search** RSS (`/search.rss?q=`) | topic-driven cross-subreddit pull |
+| Lemmy / Lobsters | low India-relevance — skip unless tech brand |
 
 ## ⚠️ DEFERRED — needs a key / OAuth / paid tier
 
@@ -75,6 +98,31 @@ What it gives: hashtag-volume tracking, recent-media for hashtags
 - **Env vars:** `IG_ACCESS_TOKEN`, `IG_USER_ID`
 - **Lens lift:** `digital_expresser`, `social_identity`, `scene_individual`
 - **Honest note:** highest-friction setup of any source here. Worth it only after PoC client.
+
+### Ticketmaster Discovery API (India events)
+
+What it gives: live event listings — concerts, festivals, shows — with
+venue/date/genre. Probed `401` (needs key) but the free tier is generous.
+
+- **Need:** Ticketmaster developer API key (free, instant)
+- **Setup:** [developer.ticketmaster.com](https://developer.ticketmaster.com/)
+- **Env var:** `TICKETMASTER_API_KEY`
+- **Lens lift:** `festivals`, `experience_maximiser`, `music_streaming`
+
+### Songkick / Bandsintown (concert data)
+
+Live music event APIs. Both probed `401` — need keys.
+
+- **Need:** Songkick API key (apply) OR Bandsintown app ID (free)
+- **Lens lift:** `festivals`, `music_streaming`
+
+### Google Books API (India bestsellers)
+
+Probed `429` (rate-limited without key) — works fine with a key.
+
+- **Need:** Google Books API key (free, same Google Cloud project as YouTube)
+- **Env var:** `GOOGLE_BOOKS_API_KEY`
+- **Lens lift:** `cultural_explorer` (what India is reading)
 
 ### X (formerly Twitter)
 
