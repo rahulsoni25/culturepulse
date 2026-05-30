@@ -44,7 +44,7 @@ const TREND_KEYWORD_MAP = [
 // Confidence baseline per source — Trends rising queries are behavioural (high),
 // Google News is editorial (slightly lower), Wikipedia pageviews are
 // observation-of-attention (medium).
-const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82, wiki: 0.78, hn: 0.75, evergreen: 0.65 };
+const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82, wiki: 0.78, hn: 0.75, reddit: 0.84, youtube: 0.86, evergreen: 0.65 };
 
 // Geo bleed-through filter: Google News India returns Indian *coverage* of
 // foreign events too ("Best things in Abu Dhabi — Indian travellers"). Those
@@ -236,21 +236,32 @@ async function buildSignals(options = {}) {
     if (options.theme_extras?.length)  newsQueries = newsQueries.concat(extraQueriesForThemes(options.theme_extras));
   }
 
-  // Promise list — every fetch happens in parallel.
+  // Promise list — every fetch happens in parallel. Reddit + YouTube are
+  // default-on free sources (no key). HN + evergreen remain opt-in.
+  const useReddit  = options.use_reddit  !== false; // default ON
+  const useYouTube = options.use_youtube !== false; // default ON
+  const { fetchRedditAll, fetchYouTubeAll } = useReddit || useYouTube
+    ? await import("./sources-social.js")
+    : { fetchRedditAll: null, fetchYouTubeAll: null };
+
   const work = [
     fetchGoogleTrendsIN(),
     fetchWikipediaTop(),
     ...newsQueries.map(fetchNews),
   ];
+  if (useReddit)  work.push(fetchRedditAll());
+  if (useYouTube) work.push(fetchYouTubeAll());
   if (options.use_hackernews) {
     const { fetchHackerNews } = await import("./sources-extra.js");
     work.push(fetchHackerNews());
   }
   const results = await Promise.all(work);
   const [trends, wiki, ...rest] = results;
-  // The HN result (if any) is the last entry; everything before that is news.
-  const hn = options.use_hackernews ? rest.pop() : [];
-  const news = rest.flat();
+  // Trailing entries are appended in order: reddit, youtube, hn (any subset).
+  const hn      = options.use_hackernews ? rest.pop() : [];
+  const youtube = useYouTube ? rest.pop() : [];
+  const reddit  = useReddit  ? rest.pop() : [];
+  const news    = rest.flat();
 
   // Evergreen pool — opt-in last-resort backstop. Only mixed in when the
   // reviewer asks (use_evergreen=true) or when live sources came up empty.
@@ -259,9 +270,9 @@ async function buildSignals(options = {}) {
     const { fetchEvergreen } = await import("./sources-evergreen.js");
     evergreen = fetchEvergreen({ themes: options.evergreen_themes || null, limit: options.evergreen_limit || 20 });
   }
-  const all = [...trends, ...wiki, ...news, ...hn, ...evergreen];
+  const all = [...trends, ...wiki, ...news, ...reddit, ...youtube, ...hn, ...evergreen];
 
-  // Tag with confidence + source flags so the frontend can render G/N/W/H/E badges.
+  // Tag with confidence + source flags so the frontend can render the right badges.
   return all.map((s, idx) => ({
     id: idx,
     ...s,
@@ -269,6 +280,8 @@ async function buildSignals(options = {}) {
     from_trends:    s.source === "trends",
     from_news:      s.source === "news",
     from_wiki:      s.source === "wiki",
+    from_reddit:    s.source === "reddit",
+    from_youtube:   s.source === "youtube",
     from_hn:        s.source === "hn",
     from_evergreen: s.source === "evergreen",
     fetched_at: new Date().toISOString(),
