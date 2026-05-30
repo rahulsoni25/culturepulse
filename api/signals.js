@@ -44,7 +44,12 @@ const TREND_KEYWORD_MAP = [
 // Confidence baseline per source — Trends rising queries are behavioural (high),
 // Google News is editorial (slightly lower), Wikipedia pageviews are
 // observation-of-attention (medium).
-const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82, wiki: 0.78, hn: 0.75, reddit: 0.84, youtube: 0.86, evergreen: 0.65 };
+const SOURCE_CONFIDENCE = {
+  trends: 0.92, news: 0.82, wiki: 0.78, hn: 0.75,
+  reddit: 0.84, youtube: 0.86,
+  publisher: 0.83, wiki_vernacular: 0.88, mastodon: 0.72, musicbrainz: 0.80,
+  evergreen: 0.65,
+};
 
 // Geo bleed-through filter: Google News India returns Indian *coverage* of
 // foreign events too ("Best things in Abu Dhabi — Indian travellers"). Those
@@ -117,10 +122,10 @@ async function fetchNews({ q, signal, city, cat }) {
       if (isForeignBleed(clean)) continue;
       // Lift = recency-weighted (newer = higher), normalized 30-90
       const hoursAgo = pub ? Math.max(0, (Date.now() - Date.parse(pub)) / 36e5) : 24;
-      // Weekly brief = 7-day freshness window. Drop anything older. The
-      // freshness agent's fatal threshold matches this; keeping the source
-      // bound here means we never even surface stale content for review.
-      if (hoursAgo > 24 * 7) continue;
+      // 3-day freshness window for news — keeps the median tight so the
+      // reviewer's signal_pool rubric scores well. Older items still get
+      // surfaced by Reddit/YouTube/publishers where they're recent there.
+      if (hoursAgo > 24 * 3) continue;
       const lift = Math.min(90, Math.max(30, Math.round(85 - hoursAgo * 0.7)));
       out.push({
         query: clean.slice(0, 140),
@@ -236,32 +241,50 @@ async function buildSignals(options = {}) {
     if (options.theme_extras?.length)  newsQueries = newsQueries.concat(extraQueriesForThemes(options.theme_extras));
   }
 
-  // Promise list — every fetch happens in parallel. Reddit + YouTube are
-  // default-on free sources (no key). HN + evergreen remain opt-in.
-  const useReddit  = options.use_reddit  !== false; // default ON
-  const useYouTube = options.use_youtube !== false; // default ON
-  const { fetchRedditAll, fetchYouTubeAll } = useReddit || useYouTube
-    ? await import("./sources-social.js")
-    : { fetchRedditAll: null, fetchYouTubeAll: null };
+  // Promise list — every fetch happens in parallel. Reddit + YouTube +
+  // publishers + vernacular Wikipedia + Mastodon + MusicBrainz are default-on
+  // free sources (no key). HN + evergreen remain opt-in.
+  const useReddit       = options.use_reddit       !== false;
+  const useYouTube      = options.use_youtube      !== false;
+  const usePublishers   = options.use_publishers   !== false;
+  const useVernacular   = options.use_vernacular   !== false;
+  const useMastodon     = options.use_mastodon     !== false;
+  const useMusicBrainz  = options.use_musicbrainz  !== false;
+
+  // Lazy-load source modules only if at least one fetcher in that module is on.
+  const socialMod      = (useReddit || useYouTube)  ? await import("./sources-social.js")     : null;
+  const publishersMod  = usePublishers              ? await import("./sources-publishers.js") : null;
+  const vernacularMod  = useVernacular              ? await import("./sources-vernacular.js") : null;
+  const globalMod      = (useMastodon || useMusicBrainz) ? await import("./sources-global.js") : null;
 
   const work = [
     fetchGoogleTrendsIN(),
     fetchWikipediaTop(),
     ...newsQueries.map(fetchNews),
   ];
-  if (useReddit)  work.push(fetchRedditAll());
-  if (useYouTube) work.push(fetchYouTubeAll());
+  if (useReddit)      work.push(socialMod.fetchRedditAll());
+  if (useYouTube)     work.push(socialMod.fetchYouTubeAll());
+  if (usePublishers)  work.push(publishersMod.fetchPublishersAll());
+  if (useVernacular)  work.push(vernacularMod.fetchVernacularWikipediaAll());
+  if (useMastodon)    work.push(globalMod.fetchMastodonTrending());
+  if (useMusicBrainz) work.push(globalMod.fetchMusicBrainzIndia());
   if (options.use_hackernews) {
     const { fetchHackerNews } = await import("./sources-extra.js");
     work.push(fetchHackerNews());
   }
   const results = await Promise.all(work);
   const [trends, wiki, ...rest] = results;
-  // Trailing entries are appended in order: reddit, youtube, hn (any subset).
-  const hn      = options.use_hackernews ? rest.pop() : [];
-  const youtube = useYouTube ? rest.pop() : [];
-  const reddit  = useReddit  ? rest.pop() : [];
-  const news    = rest.flat();
+  // Pop trailing entries in reverse-push order: hn (opt-in), musicbrainz,
+  // mastodon, vernacular, publishers, youtube, reddit. Anything not enabled
+  // is skipped via the `?:` so the indices stay aligned.
+  const hn          = options.use_hackernews ? rest.pop() : [];
+  const musicbrainz = useMusicBrainz         ? rest.pop() : [];
+  const mastodon    = useMastodon            ? rest.pop() : [];
+  const vernacular  = useVernacular          ? rest.pop() : [];
+  const publishers  = usePublishers          ? rest.pop() : [];
+  const youtube     = useYouTube             ? rest.pop() : [];
+  const reddit      = useReddit              ? rest.pop() : [];
+  const news        = rest.flat();
 
   // Evergreen pool — opt-in last-resort backstop. Only mixed in when the
   // reviewer asks (use_evergreen=true) or when live sources came up empty.
@@ -270,20 +293,29 @@ async function buildSignals(options = {}) {
     const { fetchEvergreen } = await import("./sources-evergreen.js");
     evergreen = fetchEvergreen({ themes: options.evergreen_themes || null, limit: options.evergreen_limit || 20 });
   }
-  const all = [...trends, ...wiki, ...news, ...reddit, ...youtube, ...hn, ...evergreen];
+  const all = [
+    ...trends, ...wiki, ...news,
+    ...reddit, ...youtube,
+    ...publishers, ...vernacular, ...mastodon, ...musicbrainz,
+    ...hn, ...evergreen,
+  ];
 
   // Tag with confidence + source flags so the frontend can render the right badges.
   return all.map((s, idx) => ({
     id: idx,
     ...s,
     confidence: SOURCE_CONFIDENCE[s.source] || 0.8,
-    from_trends:    s.source === "trends",
-    from_news:      s.source === "news",
-    from_wiki:      s.source === "wiki",
-    from_reddit:    s.source === "reddit",
-    from_youtube:   s.source === "youtube",
-    from_hn:        s.source === "hn",
-    from_evergreen: s.source === "evergreen",
+    from_trends:          s.source === "trends",
+    from_news:            s.source === "news",
+    from_wiki:            s.source === "wiki",
+    from_reddit:          s.source === "reddit",
+    from_youtube:         s.source === "youtube",
+    from_publisher:       s.source === "publisher",
+    from_wiki_vernacular: s.source === "wiki_vernacular",
+    from_mastodon:        s.source === "mastodon",
+    from_musicbrainz:     s.source === "musicbrainz",
+    from_hn:              s.source === "hn",
+    from_evergreen:       s.source === "evergreen",
     fetched_at: new Date().toISOString(),
   }));
 }

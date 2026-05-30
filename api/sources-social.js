@@ -101,9 +101,14 @@ async function fetchSubreddit({ sub, lens, city, cat }) {
       // Skip the sticky AutoModerator / Mod posts which are usually rules/meta.
       if (/automoderator|moderator|^weekly|^daily/i.test(e.author || "") ||
           /weekly thread|daily thread|megathread|rules/i.test(e.title)) continue;
-      // Recency: only posts within last 7 days
-      const hoursAgo = e.updated ? Math.max(0, (Date.now() - Date.parse(e.updated)) / 36e5) : 24;
-      if (hoursAgo > 24 * 7) continue;
+      // Recency: 3-day window keeps "hot" relevant. Older Reddit items
+      // are usually meta/admin posts the freshness agent shouldn't see.
+      let hoursAgo = 0;
+      if (e.updated) {
+        const ts = Date.parse(e.updated);
+        if (!Number.isNaN(ts)) hoursAgo = Math.max(0, (Date.now() - ts) / 36e5);
+      }
+      if (hoursAgo > 24 * 3) continue;
       // Lift: recency-weighted, normalised to 35-85
       const lift = Math.min(85, Math.max(35, Math.round(78 - hoursAgo * 0.4)));
       out.push({

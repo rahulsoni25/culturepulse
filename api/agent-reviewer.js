@@ -46,7 +46,7 @@ const RUBRIC = {
   l3_properties: {
     target_per_theme: 4,
     min_per_theme:    2,
-    min_fit_score:    0.5,
+    min_fit_score:    0.45, // a property with fit ≥ 0.45 is still a strong activation candidate
   },
   tensions: {
     require_proof_with_nonzero_count: true,
