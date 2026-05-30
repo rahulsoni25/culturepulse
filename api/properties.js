@@ -80,8 +80,8 @@ export const PROPERTIES = [
     id: "social_offline_house_party",
     name: "Social offline house-party",
     type: "venue",
-    theme_keys: ["intimate_gatherings", "music_belonging"],
-    lens_keys: ["late_night_out", "group_socialiser"],
+    theme_keys: ["intimate_gatherings", "music_belonging", "cricket_culture"],
+    lens_keys: ["late_night_out", "group_socialiser", "cricket_watching"],
     persona_keys: ["urban_gen_z", "millennials_urban"],
     brand_fit: { tuborg: 0.9, heineken: 0.5, kingfisher: 0.8, bira91: 0.85 },
     activation_note: "SOCIAL outlets, late-night themes — co-program a 'house party' content series.",
@@ -128,9 +128,9 @@ export const PROPERTIES = [
     id: "zomato_late_night",
     name: "Zomato late-night order bundles",
     type: "platform",
-    theme_keys: ["intimate_gatherings", "performance_relief", "music_belonging"],
-    lens_keys: ["food_delivery", "late_night_out"],
-    persona_keys: ["urban_gen_z", "millennials_urban", "working_professionals"],
+    theme_keys: ["intimate_gatherings", "performance_relief", "music_belonging", "cricket_culture"],
+    lens_keys: ["food_delivery", "late_night_out", "cricket_watching"],
+    persona_keys: ["urban_gen_z", "millennials_urban", "working_professionals", "moms_urban", "moms_semiurban"],
     brand_fit: { tuborg: 0.9, heineken: 0.6, kingfisher: 0.7, bira91: 0.85 },
     activation_note: "House-party bundle SKUs — order food + drinks for groups of 4-6.",
     city_anchors: ["metros"],
@@ -139,9 +139,9 @@ export const PROPERTIES = [
     id: "swiggy_instamart",
     name: "Swiggy Instamart (premium SKUs)",
     type: "platform",
-    theme_keys: ["intimate_gatherings", "music_belonging"],
-    lens_keys: ["food_delivery"],
-    persona_keys: ["urban_gen_z", "millennials_urban"],
+    theme_keys: ["intimate_gatherings", "music_belonging", "cricket_culture"],
+    lens_keys: ["food_delivery", "cricket_watching"],
+    persona_keys: ["urban_gen_z", "millennials_urban", "working_professionals", "moms_urban", "moms_semiurban", "moms_rural"],
     brand_fit: { tuborg: 0.7, heineken: 0.9, kingfisher: 0.85, bira91: 0.75 },
     activation_note: "10-minute delivery placement during prime-time IPL match windows.",
     city_anchors: ["metros"],
@@ -150,9 +150,9 @@ export const PROPERTIES = [
     id: "bookmyshow_events",
     name: "BookMyShow event funnels",
     type: "platform",
-    theme_keys: ["festival_culture", "music_belonging", "fomo_genuine"],
-    lens_keys: ["festivals", "experience_maximiser"],
-    persona_keys: ["urban_gen_z", "millennials_urban"],
+    theme_keys: ["festival_culture", "music_belonging", "fomo_genuine", "cricket_culture"],
+    lens_keys: ["festivals", "experience_maximiser", "cricket_watching"],
+    persona_keys: ["urban_gen_z", "millennials_urban", "working_professionals", "moms_urban", "moms_semiurban"],
     brand_fit: { tuborg: 0.7, heineken: 0.75, kingfisher: 0.6, bira91: 0.7 },
     activation_note: "Pre-event 'plan your night' content + post-event drink-bundle CTA.",
     city_anchors: ["pan-India"],
@@ -215,6 +215,41 @@ export const PROPERTIES = [
     brand_fit: { tuborg: 0.5, heineken: 0.5, kingfisher: 0.2, bira91: 0.85 },
     activation_note: "Limited collab drop (50-200 units). Object-as-signal play.",
     city_anchors: ["Mumbai", "Delhi", "BLR"],
+  },
+
+  // ── CRICKET / SPORT VIEWING (added for cricket_culture theme coverage) ──────
+  {
+    id: "sports_bar_circuit",
+    name: "Sports-bar viewing circuit (Sports Bar, Hoppipola, etc.)",
+    type: "venue",
+    theme_keys: ["cricket_culture", "intimate_gatherings"],
+    lens_keys: ["cricket_watching", "late_night_out", "group_socialiser"],
+    persona_keys: ["urban_gen_z", "millennials_urban", "working_professionals", "millennials_semiurban"],
+    brand_fit: { tuborg: 0.75, heineken: 0.85, kingfisher: 0.9, bira91: 0.6 },
+    activation_note: "Match-night activation at city sports-bar chains. Match-anchored drink deals.",
+    city_anchors: ["Mumbai", "BLR", "Delhi", "Pune"],
+  },
+  {
+    id: "ipl_at_home_kit",
+    name: "Match-day at-home kit (delivery + jersey + snacks)",
+    type: "content",
+    theme_keys: ["cricket_culture", "intimate_gatherings"],
+    lens_keys: ["cricket_watching", "food_delivery", "group_socialiser"],
+    persona_keys: ["urban_gen_z", "millennials_urban", "working_professionals", "millennials_semiurban", "moms_urban", "moms_semiurban", "moms_rural"],
+    brand_fit: { tuborg: 0.6, heineken: 0.55, kingfisher: 0.95, bira91: 0.5 },
+    activation_note: "Bundled SKU: 6-pack + branded snacks + viewing-party guide for Match Day.",
+    city_anchors: ["pan-India"],
+  },
+  {
+    id: "family_festive_collab",
+    name: "Family-festive co-branded SKUs (Diwali / Onam / Pongal)",
+    type: "content",
+    theme_keys: ["festival_culture", "intimate_gatherings"],
+    lens_keys: ["festivals", "food_delivery", "group_socialiser"],
+    persona_keys: ["millennials_urban", "millennials_semiurban", "moms_urban", "moms_semiurban", "moms_rural", "working_professionals"],
+    brand_fit: { tuborg: 0.55, heineken: 0.65, kingfisher: 0.85, bira91: 0.6 },
+    activation_note: "Co-branded festival hampers. Family-occasion presence without compromising brand voice.",
+    city_anchors: ["pan-India"],
   },
 
   // ── GAMING ──────────────────────────────────────────────────────────────────
@@ -304,10 +339,16 @@ export const THEMES = {
 };
 
 // Helper: rank properties for a (brand, persona, signals) trio.
-export function rankProperties({ brand, personaKey, themeKey, signals = [], limit = 4 }) {
+//
+// IMPORTANT: persona is now a SOFT filter — properties not tagged for the
+// requested persona still appear but with a small score penalty. This is
+// honest: a "Magnetic Fields Festival" is still a viable activation idea
+// for a working-professional brand, even if the property's primary fit is
+// urban Gen-Z. The persona tag is preference, not gatekeeper.
+export function rankProperties({ brand, personaKey, themeKey, signals = [], limit = 4, fitFloor = 0.3 }) {
   const brandKey = String(brand || "").toLowerCase().replace(/[^a-z]/g, "");
-  // Live-signal boost: properties whose city_anchors / lens_keys match top
-  // live signals get a small lift, so the library stays grounded in reality.
+  // Live-signal boost: properties whose lens_keys match top live signals
+  // get a small lift, so the library stays grounded in reality.
   const liveLensMix = {};
   signals.forEach((s) => {
     liveLensMix[s.signal] = (liveLensMix[s.signal] || 0) + (s.lift || 0);
@@ -316,16 +357,18 @@ export function rankProperties({ brand, personaKey, themeKey, signals = [], limi
 
   return PROPERTIES
     .filter((p) => !themeKey || p.theme_keys.includes(themeKey))
-    .filter((p) => !personaKey || p.persona_keys.includes(personaKey))
     .map((p) => {
       const fit = (p.brand_fit?.[brandKey]) ?? 0.4;
       const liveBoost = p.lens_keys.reduce(
         (sum, k) => sum + ((liveLensMix[k] || 0) / maxLensMix) * 0.15,
         0
       );
-      return { ...p, score: +(fit + liveBoost).toFixed(3) };
+      // Persona match: full credit if listed, mild 0.85× penalty otherwise.
+      // Gentle enough that a strong brand_fit still keeps an anchor (fit ≥ 0.5).
+      const personaMatch = !personaKey || p.persona_keys.includes(personaKey) ? 1.0 : 0.85;
+      return { ...p, score: +((fit + liveBoost) * personaMatch).toFixed(3), persona_matched: personaMatch === 1.0 };
     })
-    .filter((p) => p.score > 0.3) // drop genuinely bad fits
+    .filter((p) => p.score > fitFloor)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 }

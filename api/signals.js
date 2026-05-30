@@ -44,7 +44,7 @@ const TREND_KEYWORD_MAP = [
 // Confidence baseline per source — Trends rising queries are behavioural (high),
 // Google News is editorial (slightly lower), Wikipedia pageviews are
 // observation-of-attention (medium).
-const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82, wiki: 0.78, hn: 0.75 };
+const SOURCE_CONFIDENCE = { trends: 0.92, news: 0.82, wiki: 0.78, hn: 0.75, evergreen: 0.65 };
 
 // Geo bleed-through filter: Google News India returns Indian *coverage* of
 // foreign events too ("Best things in Abu Dhabi — Indian travellers"). Those
@@ -251,17 +251,26 @@ async function buildSignals(options = {}) {
   // The HN result (if any) is the last entry; everything before that is news.
   const hn = options.use_hackernews ? rest.pop() : [];
   const news = rest.flat();
-  const all = [...trends, ...wiki, ...news, ...hn];
 
-  // Tag with confidence + source flags so the frontend can render G/N/W/H badges.
+  // Evergreen pool — opt-in last-resort backstop. Only mixed in when the
+  // reviewer asks (use_evergreen=true) or when live sources came up empty.
+  let evergreen = [];
+  if (options.use_evergreen) {
+    const { fetchEvergreen } = await import("./sources-evergreen.js");
+    evergreen = fetchEvergreen({ themes: options.evergreen_themes || null, limit: options.evergreen_limit || 20 });
+  }
+  const all = [...trends, ...wiki, ...news, ...hn, ...evergreen];
+
+  // Tag with confidence + source flags so the frontend can render G/N/W/H/E badges.
   return all.map((s, idx) => ({
     id: idx,
     ...s,
     confidence: SOURCE_CONFIDENCE[s.source] || 0.8,
-    from_trends: s.source === "trends",
-    from_news:   s.source === "news",
-    from_wiki:   s.source === "wiki",
-    from_hn:     s.source === "hn",
+    from_trends:    s.source === "trends",
+    from_news:      s.source === "news",
+    from_wiki:      s.source === "wiki",
+    from_hn:        s.source === "hn",
+    from_evergreen: s.source === "evergreen",
     fetched_at: new Date().toISOString(),
   }));
 }

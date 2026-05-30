@@ -64,6 +64,8 @@ function frac10(num, denom) {
 function rateSignalPool(signals, freshness) {
   const count = signals.length;
   const sourceCount = new Set(signals.map((s) => s.source)).size;
+  const evergreenCount = signals.filter((s) => s.source === "evergreen").length;
+  const liveCount = count - evergreenCount;
   const median = freshness?.metrics?.median_age_hours ?? 0;
 
   // Three sub-scores, average.
@@ -77,7 +79,13 @@ function rateSignalPool(signals, freshness) {
 
   if (count < RUBRIC.signal_pool.target_count) {
     notes.push(`Only ${count} signals (target ${RUBRIC.signal_pool.target_count}+).`);
+    // Escalate by severity — first try Hacker News + extra queries; if the
+    // pool is critically thin (<15 live signals), also enable the evergreen
+    // backstop so we can always reach a usable brief.
     actions.push({ type: "enable_extra_sources", params: { sources: ["hackernews", "extra_news_queries"] }, why: "Signal pool below target — adding cross-cut sources." });
+    if (liveCount < 15) {
+      actions.push({ type: "enable_evergreen_pool", params: { limit: 18 }, why: "Live pool critically thin (<15) — enabling perennial-India backstop." });
+    }
   }
   if (sourceCount < RUBRIC.signal_pool.target_sources) {
     notes.push(`${sourceCount} distinct source(s) — single-source risk.`);
@@ -87,9 +95,9 @@ function rateSignalPool(signals, freshness) {
     notes.push(`Median age ${median}h — should be ≤${RUBRIC.signal_pool.target_age_h}h.`);
     actions.push({ type: "expand_news_queries", params: { add: ["india weekly culture", "india news today"] }, why: "Some sources are slow — adding fresh-news queries." });
   }
-  if (!actions.length) notes.push(`${count} signals · ${sourceCount} sources · median ${median}h. Healthy.`);
+  if (!actions.length) notes.push(`${count} signals · ${sourceCount} sources · median ${median}h. Healthy.` + (evergreenCount > 0 ? ` (${evergreenCount} evergreen backstop)` : ""));
 
-  return { score, notes: notes.join(" "), actions, metrics: { count, sourceCount, median_age_h: median } };
+  return { score, notes: notes.join(" "), actions, metrics: { count, live_count: liveCount, evergreen_count: evergreenCount, sourceCount, median_age_h: median } };
 }
 
 // Score the Level-1 theme distribution.
@@ -109,12 +117,19 @@ function rateThemes(drops) {
 
   if (count < RUBRIC.l1_themes.target_count) {
     notes.push(`${count} L1 themes (target ${RUBRIC.l1_themes.target_count}+).`);
-    if (count < 3) actions.push({ type: "enable_extra_sources", params: { sources: ["hackernews", "extra_news_queries"] }, why: "Need wider signal mix to surface more L1 themes." });
+    if (count < 3) {
+      actions.push({ type: "enable_extra_sources", params: { sources: ["hackernews", "extra_news_queries"] }, why: "Need wider signal mix to surface more L1 themes." });
+      // If we're at <3 themes, also enable evergreen as backstop — different
+      // themes will be activated by evergreen's diverse pool.
+      actions.push({ type: "enable_evergreen_pool", params: { limit: 18 }, why: "Theme count critically low — enable evergreen for thematic breadth." });
+    }
   }
   const thin = drops.filter((d) => d.signal_count < RUBRIC.l1_themes.min_signals_per_theme);
   if (thin.length && score < 9.5) {
     notes.push(`${thin.length} theme(s) below ${RUBRIC.l1_themes.min_signals_per_theme} signals.`);
     actions.push({ type: "expand_news_queries", params: { add: thinThemeQueries(thin) }, why: "Targeted news queries to deepen thin themes." });
+    // Also pass theme keys for evergreen-pool theme filtering.
+    actions.push({ type: "enable_evergreen_pool", params: { limit: 12, themes: thin.map((d) => d.level_1?.key).filter(Boolean) }, why: "Thin themes — pull theme-tagged evergreen signals." });
   }
   if (!actions.length) notes.push(`${count} themes · ${meetsFloor} above signal-floor.`);
 
@@ -204,6 +219,9 @@ function rateL3(drops) {
   }
   if (anchored < drops.length) {
     notes.push(`${drops.length - anchored}/${drops.length} themes lack an anchor property (fit ≥ ${RUBRIC.l3_properties.min_fit_score}).`);
+    // Without an anchor, the theme is hard for a planner to act on. Try the
+    // evergreen pool — its theme-hint tagging often surfaces a stronger anchor.
+    actions.push({ type: "enable_evergreen_pool", params: { limit: 14 }, why: "Theme lacks a strong-fit anchor — evergreen pool may surface one." });
   }
   if (!actions.length) notes.push(`Avg ${avg.toFixed(1)} L3/theme · every theme has ≥2 candidates + an anchor.`);
 

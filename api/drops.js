@@ -179,13 +179,48 @@ function fillProofPoint(template, signals) {
 }
 
 // Choose the most relevant tension for a Level-1 theme. Personas list their
-// active tensions; we pick the one whose primary lens overlaps the theme.
+// active tensions; we pick the one whose key maps to the theme. Every persona's
+// tension keys are listed here so a moms persona doesn't fall back to a Gen-Z
+// tension when picking the right one.
 const TENSION_THEME_HINTS = {
-  performance_relief: ["intimate_gatherings", "performance_relief"],
-  scene_individual:   ["scene_individual", "music_belonging"],
-  discovery_comfort:  ["discovery_culture"],
-  curated_real:       ["curated_real"],
-  fomo_genuine:       ["festival_culture", "fomo_genuine", "music_belonging"],
+  // Urban Gen Z
+  performance_relief:    ["intimate_gatherings", "performance_relief"],
+  scene_individual:      ["scene_individual", "music_belonging"],
+  discovery_comfort:     ["discovery_culture"],
+  curated_real:          ["curated_real"],
+  fomo_genuine:          ["festival_culture", "fomo_genuine", "music_belonging"],
+
+  // Millennials Urban
+  work_lifestyle:        ["intimate_gatherings", "performance_relief"],
+  experience_over_things:["festival_culture", "fomo_genuine"],
+  premium_taste_budget:  ["scene_individual", "curated_real"],
+  rediscovery:           ["discovery_culture", "music_belonging"],
+
+  // Millennials Semi-Urban
+  tier_metro:            ["scene_individual", "music_belonging", "festival_culture"],
+  trad_modern:           ["intimate_gatherings", "festival_culture"],
+  value_brand:           ["cricket_culture", "discovery_culture"],
+  group_belonging:       ["intimate_gatherings", "music_belonging"],
+
+  // Working Professionals
+  time_quality:          ["intimate_gatherings", "performance_relief"],
+  always_on_switch:      ["performance_relief", "intimate_gatherings"],
+  achievement_presence:  ["festival_culture", "fomo_genuine"],
+
+  // Urban Moms
+  self_family:           ["performance_relief", "intimate_gatherings"],
+  trad_modern_parenting: ["scene_individual", "curated_real"],
+  convenience_quality:   ["intimate_gatherings", "music_belonging", "festival_culture"],
+
+  // Semi-Urban Moms
+  modern_budget:         ["festival_culture", "intimate_gatherings"],
+  role_identity:         ["curated_real", "scene_individual"],
+  tradition_exposure:    ["discovery_culture", "cricket_culture"],
+
+  // Rural Moms
+  aspiration_constraint: ["festival_culture", "cricket_culture"],
+  media_tradition:       ["discovery_culture", "curated_real"],
+  village_emigration:    ["intimate_gatherings", "festival_culture"],
 };
 
 function pickTensionForTheme(themeKey, persona) {
@@ -216,7 +251,8 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
       themeKey,
       signals,
       limit: 4,
-    }).filter((p) => p.score >= propertyFloor);
+      fitFloor: propertyFloor,
+    });
     const tensionDef = pickTensionForTheme(themeKey, persona);
     const tension = tensionDef
       ? {
@@ -261,6 +297,21 @@ function applyAction(action, state) {
         }
       });
       break;
+    case "enable_evergreen_pool": {
+      // The last-resort backstop. Clearly labelled in the response so users
+      // see when it kicked in.
+      next.buildOptions.use_evergreen = true;
+      const lim = action.params?.limit;
+      if (lim) next.buildOptions.evergreen_limit = lim;
+      if (action.params?.themes?.length) {
+        next.buildOptions.evergreen_themes = [
+          ...(next.buildOptions.evergreen_themes || []),
+          ...action.params.themes,
+        ];
+      }
+      note.push(`enabled evergreen backstop pool${action.params?.themes?.length ? " (themes: " + action.params.themes.join(", ") + ")" : ""}`);
+      break;
+    }
     case "expand_news_queries": {
       const adds = action.params?.add || [];
       next.buildOptions.extra_queries = [...(next.buildOptions.extra_queries || []), ...adds];
