@@ -21,6 +21,8 @@
 import { buildSignals } from "./signals.js";
 import { runFreshnessAgent } from "./agent-freshness.js";
 import { runQualityAgent }   from "./agent-quality.js";
+import { getPersona }        from "./personas.js";
+import { applyFilters }      from "./filters.js";
 
 // Map signal keys → human-readable cultural framing the mock uses to write prose.
 // (When we swap in Gemini, this becomes context in the prompt, not output text.)
@@ -112,13 +114,16 @@ function summarise(s) {
 // ── Mock brief generator ─────────────────────────────────────────────────────
 // Writes planner-quality prose that templates against the actual live data,
 // so it never reads as generic boilerplate.
-function generateMockBrief({ brand, age, city, signals, profile }) {
-  // Apply brand weighting to the signal pool — each signal gets a brand-adjusted
-  // score so the strongest cultural lens for THIS brand surfaces, not just the
-  // strongest globally.
+function generateMockBrief({ brand, age, city, signals, profile, persona }) {
+  // Apply BRAND × PERSONA weighting to the signal pool — each signal's score
+  // is its lift times the brand's lens weight times the persona's lens weight,
+  // so the strongest cultural lens for THIS brand AND THIS audience surfaces.
+  const pw = persona?.behavioural?.weights || {};
   const weighted = signals.map((s) => ({
     ...s,
-    brandScore: (s.lift || 0) * ((profile.weight && profile.weight[s.signal]) || 1),
+    brandScore: (s.lift || 0)
+      * ((profile.weight && profile.weight[s.signal]) || 1)
+      * (pw[s.signal] || 1),
   }));
 
   const topMusic   = pickTop(weighted, "music_streaming", 2);
@@ -299,10 +304,17 @@ export default async function handler(req, res) {
       .join(" ");
     const age   = u.searchParams.get("age")   || "16–22 Late Gen Z";
     const city  = u.searchParams.get("city")  || "Metro + T1 + T2";
+    // Persona (audience) + Signal-Lens + City-reach filters so the brief
+    // reshapes with the same inputs as the rest of the framework.
+    const personaKey = u.searchParams.get("persona") || "urban_gen_z";
+    const persona = getPersona(personaKey);
+    const lensVal = u.searchParams.get("lens");   // "0".."4"
+    const cityVal = u.searchParams.get("cityVal"); // "0".."2" (numeric filter, separate from display label)
 
-    const signals = await buildSignals();
+    const allSignals = await buildSignals();
+    const { signals, meta: filterMeta } = applyFilters(allSignals, { lens: lensVal, city: cityVal });
     const profile = getBrandProfile(brand);
-    const rawBrief = generateMockBrief({ brand: profile.name, age, city, signals, profile });
+    const rawBrief = generateMockBrief({ brand: profile.name, age, city, signals, profile, persona });
 
     // ── REVIEW PIPELINE ─────────────────────────────────────────────────────
     // Two agents run on every brief before it goes out:
@@ -326,7 +338,9 @@ export default async function handler(req, res) {
       model: "mock-v1",
       brand: profile.name,
       brand_profile: { positioning: profile.positioning, tone: profile.tone },
+      persona: { key: persona.key, name: persona.name },
       age, city,
+      filters: { lens: lensVal, city: cityVal, lens_applied: filterMeta.lens_applied, city_applied: filterMeta.city_applied },
       generated_at,
       ...brief,
       review: { freshness, quality: quality.verdict },

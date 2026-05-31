@@ -37,6 +37,7 @@ import { getPersona } from "./personas.js";
 import { THEMES, rankProperties } from "./properties.js";
 import { runFreshnessAgent } from "./agent-freshness.js";
 import { runReviewerAgent }   from "./agent-reviewer.js";
+import { applyFilters }       from "./filters.js";
 
 // Brand weight lookup (reusing the BRAND_PROFILES weights from pulse-report
 // would create a circular import — keep a slim copy here.)
@@ -232,9 +233,13 @@ function pickTensionForTheme(themeKey, persona) {
 }
 
 // ── Build pipeline as a function so the loop can call it with different opts ─
-async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3 }) {
-  const rawSignals = await buildSignals(buildOptions);
+async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3, lens = null, city = null }) {
+  const rawSignalsAll = await buildSignals(buildOptions);
+  // Apply Signal-Lens + City reach filters (graceful — fall back if too thin).
+  const { signals: rawSignals, meta: filterMeta } = applyFilters(rawSignalsAll, { lens, city });
   const signals = rawSignals.map((s) => scored(s, persona, brand));
+  buildDropsOnce._lastFilterMeta = filterMeta;
+  buildDropsOnce._lastRawAll = rawSignalsAll;
 
   const themeAgg = clusterIntoThemes(signals);
   const themeList = Object.entries(themeAgg)
@@ -356,6 +361,9 @@ export default async function handler(req, res) {
     const brand = titleCase(brandRaw);
     const personaKey = url.searchParams.get("persona") || "urban_gen_z";
     const persona = getPersona(personaKey);
+    // Signal-Lens + City reach filters (passed through to buildDropsOnce).
+    const lens = url.searchParams.get("lens");   // "0".."4" or null
+    const city = url.searchParams.get("city");   // "0".."2" or null
 
     // Initial state. The reviewer agent will emit fix actions which update
     // this state for the next iteration.
@@ -363,6 +371,7 @@ export default async function handler(req, res) {
       buildOptions: { use_hackernews: false, extra_queries: [], theme_extras: [] },
       l2PerTheme: 4,
       propertyFloor: 0.3,
+      lens, city,
     };
     const iterations = [];
 
@@ -411,6 +420,12 @@ export default async function handler(req, res) {
         reviewer:  final.reviewer,
       },
       iterations,
+      filters: {
+        brand, persona: persona.key,
+        lens: lens, city: city,
+        lens_applied: buildDropsOnce._lastFilterMeta?.lens_applied || false,
+        city_applied: buildDropsOnce._lastFilterMeta?.city_applied || false,
+      },
       _meta: {
         signal_count_total: final.round.signals.length,
         theme_count: final.round.drops.length,

@@ -442,8 +442,16 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
   <div class="fbar-primary">
     <div class="fg"><label>Brand</label>
       <select id="fbrand"><option value="tuborg">Tuborg</option><option value="heineken">Heineken</option><option value="kingfisher">Kingfisher</option><option value="bira91">Bira91</option><option value="custom">Custom</option></select></div>
-    <div class="fg"><label>Age group</label>
-      <select id="fage"><option value="0">16–22 · Late Gen Z</option><option value="1">21–34 · Core Gen Z+</option><option value="2">25–40 · Millennial</option></select></div>
+    <div class="fg"><label>Audience</label>
+      <select id="fage">
+        <option value="urban_gen_z">16–24 · Urban Gen Z</option>
+        <option value="millennials_urban">25–34 · Urban Millennials</option>
+        <option value="millennials_semiurban">25–34 · Semi-Urban Millennials</option>
+        <option value="working_professionals">26–40 · Working Professionals</option>
+        <option value="moms_urban">28–42 · Urban Moms</option>
+        <option value="moms_semiurban">28–42 · Semi-Urban Moms</option>
+        <option value="moms_rural">28–42 · Rural Moms</option>
+      </select></div>
     <div class="fg"><label>City reach</label>
       <select id="fcity"><option value="0">Metro + T1 + T2</option><option value="1">Metro only</option><option value="2">T1 + T2 only</option></select></div>
     <div class="fg"><label>Signal lens</label>
@@ -484,6 +492,18 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
 
 <script>
 /* ── GLOBAL STATE ── */
+/* Persona key → short audience label, used wherever the old age dropdown
+   used a numeric index. fage now carries persona keys (urban_gen_z, etc.). */
+var PERSONA_LABEL = {
+  urban_gen_z:           "16–24 Urban Gen Z",
+  millennials_urban:     "25–34 Urban Millennials",
+  millennials_semiurban: "25–34 Semi-Urban Millennials",
+  working_professionals: "26–40 Working Professionals",
+  moms_urban:            "28–42 Urban Moms",
+  moms_semiurban:        "28–42 Semi-Urban Moms",
+  moms_rural:            "28–42 Rural Moms"
+};
+function audienceLabel(){ return PERSONA_LABEL[iv("fage")] || "16–24 Urban Gen Z"; }
 var credits = 42;
 var mode = "novice";
 var currentTab = "signals";
@@ -737,7 +757,7 @@ function renderAll(){
 
 function renderPills(){
   var bname={tuborg:"Tuborg",heineken:"Heineken",kingfisher:"Kingfisher",bira91:"Bira91",custom:"Custom"}[iv("fbrand")]||"Tuborg";
-  var data=[bname,["16–22 Late Gen Z","21–34 Core Gen Z+","25–40 Millennial"][parseInt(iv("fage"))%3],["Metro + T1 + T2","Metro only","T1 + T2 only"][parseInt(iv("fcity"))%3],["All signals","Music","Gaming","Food","Fashion"][parseInt(iv("flens"))%5],["24h","3d","7d","30d"][parseInt(iv("ftime"))%4]];
+  var data=[bname,audienceLabel(),["Metro + T1 + T2","Metro only","T1 + T2 only"][parseInt(iv("fcity"))%3],["All signals","Music","Gaming","Food","Fashion"][parseInt(iv("flens"))%5],["24h","3d","7d","30d"][parseInt(iv("ftime"))%4]];
   document.getElementById("pills").innerHTML=data.map(function(x){return '<span class="pill">'+x+'</span>';}).join("");
 }
 
@@ -979,8 +999,11 @@ function renderDrops(){
 
 function fetchHierarchicalDrops(cb){
   var brand = (typeof iv==="function" ? iv("fbrand") : "tuborg") || "tuborg";
-  var persona = "urban_gen_z"; // future: read from a persona selector
-  var qs = "?brand="+encodeURIComponent(brand)+"&persona="+encodeURIComponent(persona);
+  var persona = iv("fage") || "urban_gen_z";        // Audience dropdown now carries persona keys
+  var lens = iv("flens") || "0";                     // Signal Lens
+  var city = iv("fcity") || "0";                     // City reach
+  var qs = "?brand="+encodeURIComponent(brand)+"&persona="+encodeURIComponent(persona)+
+           "&lens="+encodeURIComponent(lens)+"&city="+encodeURIComponent(city);
   var devApi = "http://localhost:8787/api/drops"+qs;
   var prodApi = "/api/drops"+qs;
   var urls = (location.hostname==="localhost"||location.hostname==="127.0.0.1") ? [prodApi, devApi] : [prodApi];
@@ -1480,7 +1503,7 @@ function renderReport(){
   var gaps=Object.keys(BV).map(function(k){var lp=sig_norm[k]||0;return{k:k,bd:BV[k],lp:lp,gap:BV[k]-lp};}).filter(function(g){return g.gap>0.1;}).sort(function(a,b){return b.gap-a.gap;});
   var gap0=gaps.length>0?gaps[0]:{k:"festivals",gap:.35};
   var bname=iv("fbrand")||"Tuborg";
-  var age_label=["16–22 Late Gen Z","21–34 Core Gen Z+","25–40 Millennial"][parseInt(iv("fage"))%3];
+  var age_label=audienceLabel();
   var city_label=["Metro + T1 + T2","Metro only","T1 + T2 only"][parseInt(iv("fcity"))%3];
 
   var briefRows=[
@@ -1553,9 +1576,14 @@ function generateAIBrief(){
   body.innerHTML='<div style="padding:32px;text-align:center;color:var(--t2);font-family:var(--mono);font-size:11px">Synthesising '+SIGS.filter(function(s){return s.live;}).length+' live signals…</div>';
 
   var brand=iv("fbrand")||"Tuborg";
-  var age=["16–22 Late Gen Z","21–34 Core Gen Z+","25–40 Millennial"][parseInt(iv("fage"))%3];
+  var persona=iv("fage")||"urban_gen_z";
+  var age=audienceLabel();
   var city=["Metro + T1 + T2","Metro only","T1 + T2 only"][parseInt(iv("fcity"))%3];
-  var qs="?brand="+encodeURIComponent(brand)+"&age="+encodeURIComponent(age)+"&city="+encodeURIComponent(city);
+  var lens=iv("flens")||"0";
+  var cityVal=iv("fcity")||"0";
+  var qs="?brand="+encodeURIComponent(brand)+"&persona="+encodeURIComponent(persona)+
+         "&age="+encodeURIComponent(age)+"&city="+encodeURIComponent(city)+
+         "&lens="+encodeURIComponent(lens)+"&cityVal="+encodeURIComponent(cityVal);
   var devApi="http://localhost:8787/api/pulse-report"+qs;
   var prodApi="/api/pulse-report"+qs;
   var tryUrls=(location.hostname==="localhost"||location.hostname==="127.0.0.1")?[prodApi,devApi]:[prodApi];
