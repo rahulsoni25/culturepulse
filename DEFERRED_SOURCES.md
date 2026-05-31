@@ -4,6 +4,14 @@
 > needed to enable it. The point: never promise coverage we can't deliver, and
 > never let a missing source silently leave gaps in the brief.
 
+## 🧭 Feature roadmap (non-source)
+
+| Item | Status | Notes |
+|---|---|---|
+| **Culture Score precision (exact-fusion matching)** | ⏳ Roadmap | Today the "Score a culture idea" search (`api/culture-score.js → scoreQuery`) matches a typed phrase by **keyword + lens-hint** overlap. So "Bhajan clubbing" scores its *component currents* (devotional-music + nightlife are both individually hot) rather than the *exact* fusion. Directionally correct for a v1 decision tool. **Upgrade path:** embed the query + each live signal with a small embeddings model (Gemini `text-embedding-004`, free tier) and match by semantic similarity — that scores the *specific* fusion, not just its ingredients. ~Half-day; needs the Gemini key already documented below. |
+| **Gemini-written Pulse Report** | ⏳ Roadmap | `generateMockBrief()` is templated; swap to Gemini 2.5 Flash via the exported `buildPrompt()`. Needs `GEMINI_API_KEY`. |
+| **Persisted signal history (week-over-week)** | ⏳ Roadmap | Freshness/momentum currently snapshot-only. A tiny KV/Postgres store would unlock true week-over-week trend deltas. |
+
 ## ✅ LIVE NOW (free, no setup) — 12 sources
 
 | Source | What it surfaces | How wired |
