@@ -232,6 +232,64 @@ function pickTensionForTheme(themeKey, persona) {
   return tensions[0];
 }
 
+// ── SMART GOAL GENERATOR ─────────────────────────────────────────────────────
+// Turns each Culture Drop into an executable, accountable goal: Specific,
+// Measurable, Achievable, Relevant, Time-bound. Answers "what does a planner
+// actually DO with this signal?" — templated now, Gemini-swappable later.
+//
+// Brand-scaled KPIs: a mass brand (Kingfisher) gets bigger reach targets than
+// a craft challenger (Bira91), so the "Measurable" line is realistic per brand.
+const BRAND_GOAL_META = {
+  tuborg:     { scale: 1.0, partner: "rising indie / hip-hop artists (50K–500K)", channel: "festival side-stages + Reels", kpi: "brand-music association" },
+  heineken:   { scale: 1.7, partner: "internationally-touring acts",              channel: "premium bars + F1 weekends",  kpi: "premium consideration" },
+  kingfisher: { scale: 2.0, partner: "IPL franchises + playback artists",         channel: "watch-parties + sports bars", kpi: "match-day top-of-mind" },
+  bira91:     { scale: 0.8, partner: "design-led indie collectives",              channel: "boutique festivals + merch capsules", kpi: "design credibility" },
+};
+
+function smartWindow(drop) {
+  const lift = drop.lift_score || 0;
+  if (lift > 1500) return { weeks: 2, urgency: "Peak window is ~2 weeks — move now." };
+  if (lift > 600)  return { weeks: 4, urgency: "Build over the next 4 weeks." };
+  return { weeks: 6, urgency: "Seed over a 6-week runway before saturation." };
+}
+
+function generateSmartGoal(drop, brandRaw, persona) {
+  const bk = brandKey(brandRaw);
+  const m = BRAND_GOAL_META[bk] || { scale: 1.0, partner: "mid-tier creators (50K–200K)", channel: "social + on-ground", kpi: "brand affinity" };
+  const brandName = titleCase(brandRaw);
+  const prop = drop.level_3?.[0];
+  const theme = drop.level_1?.name || "this cultural shift";
+  const tension = drop.tension?.statement || theme;
+  const audience = persona?.name || "the target audience";
+  const win = smartWindow(drop);
+  const s = m.scale;
+
+  // Brand-scaled measurable KPIs.
+  const impressions = (1.4 * s).toFixed(1).replace(/\.0$/, "") + "M";
+  const samplings = Math.round(3000 * s).toLocaleString("en-IN");
+  const assocLift = Math.round(10 + 5 * Math.min(1.4, s)) + "%";
+  const creators = s >= 1.7 ? "5–7" : s >= 1 ? "3–5" : "2–3";
+
+  const propClause = prop
+    ? `via ${prop.name} (${prop.type})`
+    : `via ${m.channel}`;
+
+  return {
+    headline: `Own "${theme}" for ${brandName} among ${audience}`,
+    specific:
+      `Activate ${brandName} inside "${theme}" ${propClause}, partnering with ${m.partner}. ` +
+      (prop?.activation_note ? prop.activation_note : ""),
+    measurable:
+      `${impressions} reach · +${assocLift} ${m.kpi} · ${samplings} on-ground / sampling touchpoints · ${creators} creator collaborations.`,
+    achievable:
+      `Deliverable within a standard activation budget: ${creators} creator partnerships + 1 ${prop?.type || "channel"} activation. No net-new infrastructure.`,
+    relevant:
+      `Directly resolves the audience tension "${tension}" for ${audience} — the cultural "why" behind the spike.`,
+    time_bound:
+      `${win.weeks}-week campaign window. ${win.urgency}`,
+  };
+}
+
 // ── Build pipeline as a function so the loop can call it with different opts ─
 async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3, lens = null, city = null }) {
   const rawSignalsAll = await buildSignals(buildOptions);
@@ -268,7 +326,7 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
         }
       : null;
 
-    return {
+    const dropObj = {
       level_1: { key: theme.key, name: theme.name, description: theme.description },
       lift_score: +agg.lift_total.toFixed(2),
       signal_count: agg.signals.length,
@@ -279,6 +337,9 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
       })),
       tension,
     };
+    // SMART goal — the "what do I do about this" layer.
+    dropObj.smart_goal = generateSmartGoal(dropObj, brandRaw, persona);
+    return dropObj;
   });
 
   return { drops, signals, rawSignals };
@@ -492,6 +553,18 @@ function runDropsQualityAgent({ drops = [] }) {
     severity: tensionsComplete < drops.length ? "warn" : "info",
     passed: true,
     detail: `${tensionsComplete}/${drops.length} tensions complete (statement + proof + reasoning).`,
+  });
+
+  // SMART goal completeness — every drop must carry an actionable, complete goal.
+  const smartComplete = drops.filter((d) => {
+    const g = d.smart_goal;
+    return g && g.specific && g.measurable && g.achievable && g.relevant && g.time_bound;
+  }).length;
+  checks.push({
+    name: "smart-goal-completeness",
+    severity: smartComplete < drops.length ? "warn" : "info",
+    passed: smartComplete === drops.length,
+    detail: `${smartComplete}/${drops.length} drops carry a complete SMART goal (S·M·A·R·T).`,
   });
 
   const score = Math.max(0, 100
