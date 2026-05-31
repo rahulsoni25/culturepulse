@@ -8,8 +8,10 @@ import freshnessHandler from "../api/agent-freshness.js";
 import qualityHandler   from "../api/agent-quality.js";
 import dropsHandler     from "../api/drops.js";
 import reviewerHandler  from "../api/agent-reviewer.js";
+import cultureScoreHandler from "../api/culture-score.js";
 
 const routes = {
+  "/api/culture-score":   cultureScoreHandler,
   "/api/signals":         signalsHandler,
   "/api/pulse-report":    pulseReportHandler,
   "/api/drops":           dropsHandler,

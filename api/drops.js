@@ -38,6 +38,7 @@ import { THEMES, rankProperties } from "./properties.js";
 import { runFreshnessAgent } from "./agent-freshness.js";
 import { runReviewerAgent }   from "./agent-reviewer.js";
 import { applyFilters }       from "./filters.js";
+import { scoreTheme }         from "./culture-score.js";
 
 // Brand weight lookup (reusing the BRAND_PROFILES weights from pulse-report
 // would create a circular import — keep a slim copy here.)
@@ -337,6 +338,9 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
       })),
       tension,
     };
+    // Culture Score — the decision layer: a readable 0-100 + verdict so a
+    // planner knows whether to integrate this theme into the campaign.
+    dropObj.culture = scoreTheme({ themeSignals: agg.signals, brand: brandRaw, persona });
     // SMART goal — the "what do I do about this" layer.
     dropObj.smart_goal = generateSmartGoal(dropObj, brandRaw, persona);
     return dropObj;

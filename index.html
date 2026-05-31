@@ -1166,15 +1166,36 @@ function renderHierarchicalDrops(el, data){
       '</div>'
     ) : '';
 
+    // Culture Score badge — the at-a-glance decision number.
+    var cu = drop.culture || {};
+    var cuTone = cu.verdict_tone==='green'?'var(--green)':cu.verdict_tone==='red'?'var(--red)':'var(--amber)';
+    var scoreBadge =
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;min-width:84px;background:'+cuTone+'18;border:1px solid '+cuTone+'55;border-radius:10px;padding:8px 10px">'+
+        '<div style="font-size:26px;font-weight:800;color:'+cuTone+';line-height:1">'+(cu.culture_score!=null?cu.culture_score:'—')+'</div>'+
+        '<div style="font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3)">Culture score</div>'+
+        '<div style="font-family:var(--mono);font-size:9px;font-weight:700;color:'+cuTone+';text-align:center;line-height:1.2">'+escapeHtml(cu.verdict||'')+'</div>'+
+      '</div>';
+
     return '<div class="sec" style="margin-bottom:18px">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:14px">'+
         '<div style="flex:1;min-width:0">'+
-          '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">Level 1 · '+drop.signal_count+' signals · lift '+drop.lift_score+'</div>'+
+          '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:3px">Level 1 · '+drop.signal_count+' signals · '+heatLbl+'</div>'+
           '<div style="font-size:20px;font-weight:800;color:var(--t1);line-height:1.25">'+escapeHtml(drop.level_1.name)+'</div>'+
           '<div style="font-size:13px;color:var(--t2);line-height:1.55;margin-top:4px">'+escapeHtml(drop.level_1.description)+'</div>'+
+          (cu.recommendation?'<div style="font-size:12px;color:'+cuTone+';line-height:1.5;margin-top:6px;font-weight:600">→ '+escapeHtml(cu.recommendation)+'</div>':'')+
         '</div>'+
-        '<span style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 10px;border-radius:5px;background:'+liftCol+'22;color:'+liftCol+';white-space:nowrap;flex-shrink:0">'+heatLbl+'</span>'+
+        scoreBadge+
       '</div>'+
+      (cu.breakdown?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+        ['momentum','brand_fit','timing','evidence'].map(function(k){
+          var v=cu.breakdown[k];var lbl={momentum:'Momentum',brand_fit:'Brand fit',timing:'Timing',evidence:'Evidence'}[k];
+          return '<div style="flex:1;min-width:90px;background:var(--bg3);border:1px solid var(--b1);border-radius:7px;padding:6px 9px">'+
+            '<div style="font-family:var(--mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)">'+lbl+'</div>'+
+            '<div style="display:flex;align-items:center;gap:6px;margin-top:3px"><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1)">'+v+'</div>'+
+            '<div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+v+'%;background:'+cuTone+'"></div></div></div>'+
+          '</div>';
+        }).join('')+
+      '</div>':'')+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">'+
         '<div>'+
           '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Level 2 · Manifestations (live signals)</div>'+
@@ -1199,9 +1220,69 @@ function renderHierarchicalDrops(el, data){
         '</div>'+
         '<button class="act" onclick="renderDrops()" style="font-size:11px;padding:6px 12px">↻ Refresh</button>'+
       '</div>'+
+      // Score-a-culture-idea search
+      '<div style="display:flex;gap:8px;align-items:stretch;margin-bottom:10px">'+
+        '<input id="cs-input" placeholder="Score a culture idea — e.g. “Bhajan clubbing”, “sober raves”, “desi techno”" '+
+          'onkeydown="if(event.key===\'Enter\')scoreCultureIdea()" '+
+          'style="flex:1;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);font-size:13px;font-family:var(--fm);padding:10px 14px;border-radius:var(--r-sm)">'+
+        '<button class="act primary" onclick="scoreCultureIdea()" style="font-size:12px;padding:0 18px">Score it</button>'+
+      '</div>'+
+      '<div id="cs-result"></div>'+
       trust+
     '</div>'+
     dropCards;
+}
+
+// Score a free-text culture idea against the live signal pool for the
+// current brand + persona. Renders a 0-100 score + verdict + breakdown.
+function scoreCultureIdea(){
+  var q=(document.getElementById("cs-input")||{}).value||"";
+  if(!q.trim()) return;
+  var box=document.getElementById("cs-result");
+  box.innerHTML='<div class="loading"><div class="spin"></div>Scoring "'+escapeHtml(q)+'" against live culture signals…</div>';
+  var brand=iv("fbrand")||"tuborg", persona=iv("fage")||"urban_gen_z";
+  var qs="?q="+encodeURIComponent(q)+"&brand="+encodeURIComponent(brand)+"&persona="+encodeURIComponent(persona);
+  var urls=(location.hostname==="localhost"||location.hostname==="127.0.0.1")?["/api/culture-score"+qs,"http://localhost:8787/api/culture-score"+qs]:["/api/culture-score"+qs];
+  (function attempt(i){
+    if(i>=urls.length){ box.innerHTML='<div style="color:var(--red);font-size:12px;padding:10px">Scoring unavailable right now.</div>'; return; }
+    fetch(urls[i]).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(j){
+      if(!j||!j.ok)throw 0; renderCultureScore(j);
+    }).catch(function(){attempt(i+1);});
+  })(0);
+}
+
+function renderCultureScore(j){
+  var box=document.getElementById("cs-result"); if(!box) return;
+  var tone=j.verdict_tone==='green'?'var(--green)':j.verdict_tone==='red'?'var(--red)':'var(--amber)';
+  var bd=j.breakdown||{};
+  var ev=(j.evidence||[]).slice(0,4).map(function(e){
+    return '<div style="font-size:11px;color:var(--t2);padding:3px 0;border-bottom:1px solid var(--b1)">'+
+      '<span style="font-family:var(--mono);font-size:9px;color:var(--blue);margin-right:6px">'+e.signal+'</span>'+escapeHtml((e.query||'').slice(0,70))+' · <span style="color:'+tone+'">'+e.lift+'×</span></div>';
+  }).join('')||'<div style="font-size:11px;color:var(--t3)">No closely-matching live signals.</div>';
+  box.innerHTML=
+    '<div style="background:var(--bg2);border:1px solid '+tone+'55;border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:16px 18px;margin-bottom:14px">'+
+      '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">'+
+        '<div style="display:flex;flex-direction:column;align-items:center;min-width:90px">'+
+          '<div style="font-size:40px;font-weight:800;color:'+tone+';line-height:1">'+j.culture_score+'</div>'+
+          '<div style="font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3)">/ 100</div>'+
+        '</div>'+
+        '<div style="flex:1;min-width:200px">'+
+          '<div style="font-size:11px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.1em">Culture score · "'+escapeHtml(j.query)+'"</div>'+
+          '<div style="font-size:18px;font-weight:800;color:'+tone+';margin:2px 0 4px">'+escapeHtml(j.verdict)+'</div>'+
+          '<div style="font-size:13px;color:var(--t1);line-height:1.5">'+escapeHtml(j.recommendation)+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+
+        ['momentum','brand_fit','timing','evidence'].map(function(k){
+          var v=bd[k]||0;var lbl={momentum:'Momentum',brand_fit:'Brand fit',timing:'Timing',evidence:'Evidence'}[k];
+          return '<div style="flex:1;min-width:90px;background:var(--bg3);border:1px solid var(--b1);border-radius:7px;padding:7px 10px">'+
+            '<div style="font-family:var(--mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)">'+lbl+'</div>'+
+            '<div style="display:flex;align-items:center;gap:6px;margin-top:3px"><div style="font-family:var(--mono);font-size:13px;font-weight:700">'+v+'</div>'+
+            '<div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+v+'%;background:'+tone+'"></div></div></div></div>';
+        }).join('')+
+      '</div>'+
+      '<div style="margin-top:12px"><div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:5px">Evidence · '+(j.matched_count||0)+' live signals matched</div>'+ev+'</div>'+
+    '</div>';
 }
 
 function renderLegacyDrops(el){
