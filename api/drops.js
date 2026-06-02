@@ -146,8 +146,12 @@ function clusterIntoThemes(signals) {
 function buildLevel2(themeSignals, max = 4, globalSeen = null, primaryLenses = []) {
   const norm = (q) => String(q || "").toLowerCase().replace(/\s+/g, " ").trim();
   const prim = new Set(primaryLenses);
-  // Sort: primary-lens signals first, then by score — so relevance leads.
+  // Sort: signals that LITERALLY match the typed concept lead (so "Bhajan
+  // Clubbing" shows the bhajan-clubbing article first, not a chart-topper);
+  // then primary-lens relevance; then score.
   const sorted = themeSignals.slice().sort((a, b) => {
+    const fa = a._focus_text ? 1 : 0, fb = b._focus_text ? 1 : 0;
+    if (fa !== fb) return fb - fa;
     const pa = prim.has(a.signal) ? 1 : 0, pb = prim.has(b.signal) ? 1 : 0;
     if (pa !== pb) return pb - pa;
     return b.score - a.score;
