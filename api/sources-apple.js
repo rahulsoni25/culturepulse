@@ -176,12 +176,15 @@ async function fetchApplePodcasts() {
   }
 }
 
-export async function fetchAppleAll() {
-  const [songs, apps, grossing, podcasts] = await Promise.all([
-    fetchAppleTopSongs(),
-    fetchAppleTopApps(),
-    fetchAppleTopGrossing(),
-    fetchApplePodcasts(),
-  ]);
-  return [...songs, ...apps, ...grossing, ...podcasts];
+// emphasis: "music" → songs + podcasts only · "apps" → apps + grossing only ·
+// "all" → everything. Lets the ask (lens) decide which Apple charts matter,
+// so a Gaming ask doesn't get flooded with the music chart.
+export async function fetchAppleAll(emphasis = "all") {
+  const wantMusic = emphasis === "all" || emphasis === "music";
+  const wantApps  = emphasis === "all" || emphasis === "apps";
+  const tasks = [];
+  if (wantMusic) tasks.push(fetchAppleTopSongs(), fetchApplePodcasts());
+  if (wantApps)  tasks.push(fetchAppleTopApps(), fetchAppleTopGrossing());
+  const results = await Promise.all(tasks);
+  return results.flat();
 }

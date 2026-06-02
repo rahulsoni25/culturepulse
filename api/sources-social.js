@@ -129,9 +129,16 @@ async function fetchSubreddit({ sub, lens, city, cat }) {
   }
 }
 
-export async function fetchRedditAll() {
-  // Run all subreddits in parallel; tolerate individual failures.
-  const batches = await Promise.all(SUBREDDITS.map(fetchSubreddit));
+// `lensFilter` (optional array of lens keys) restricts to subreddits whose
+// lens matches the ask — so a Gaming ask pulls r/IndianGaming, not r/IndianFood.
+export async function fetchRedditAll(lensFilter = null) {
+  let subs = SUBREDDITS;
+  if (Array.isArray(lensFilter) && lensFilter.length) {
+    const want = new Set(lensFilter);
+    const filtered = SUBREDDITS.filter((s) => want.has(s.lens));
+    if (filtered.length) subs = filtered; // graceful: keep all if no match
+  }
+  const batches = await Promise.all(subs.map(fetchSubreddit));
   return batches.flat();
 }
 

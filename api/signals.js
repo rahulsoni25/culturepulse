@@ -236,13 +236,27 @@ async function fetchWikipediaTop() {
 // options.theme_extras:  array of theme keys (pulls tuned queries from sources-extra)
 // options.use_hackernews: boolean (adds Hacker News India-tagged stories)
 async function buildSignals(options = {}) {
-  // Build the dynamic news query list — defaults + reviewer-emitted extras.
-  let newsQueries = [...NEWS_QUERIES];
+  // ── ASK ROUTING ─────────────────────────────────────────────────────────
+  // If an `ask` is supplied (brand + lens + city + keyword), the source layer
+  // becomes targeted: news queries are derived from the ask, subreddits are
+  // filtered to the lens, Apple charts are emphasised per lens. Without an ask
+  // it falls back to the broad default fetch (backwards-compatible).
+  let plan = null;
+  if (options.ask) {
+    const { deriveSourcePlan } = await import("./ask-router.js");
+    plan = deriveSourcePlan(options.ask);
+  }
+
+  // News queries: ask-derived when routed, else the broad defaults.
+  let newsQueries = plan && plan.newsQueries.length ? [...plan.newsQueries] : [...NEWS_QUERIES];
   if (options.extra_queries?.length || options.theme_extras?.length) {
     const { adhocQueries, extraQueriesForThemes } = await import("./sources-extra.js");
     if (options.extra_queries?.length) newsQueries = newsQueries.concat(adhocQueries(options.extra_queries));
     if (options.theme_extras?.length)  newsQueries = newsQueries.concat(extraQueriesForThemes(options.theme_extras));
   }
+  // Lens-relevant subreddits + Apple emphasis from the plan.
+  const subLenses    = plan ? plan.subLenses : null;     // null = all subs
+  const appleEmphasis = plan ? plan.appleEmphasis : "all";
 
   // Promise list — every fetch happens in parallel. Reddit + YouTube +
   // publishers + vernacular Wikipedia + Mastodon + MusicBrainz are default-on
@@ -275,13 +289,13 @@ async function buildSignals(options = {}) {
     fetchWikipediaTop(),
     ...newsQueries.map(fetchNews),
   ];
-  if (useReddit)      work.push(socialMod.fetchRedditAll());
+  if (useReddit)      work.push(socialMod.fetchRedditAll(subLenses));
   if (useYouTube)     work.push(socialMod.fetchYouTubeAll());
   if (usePublishers)  work.push(publishersMod.fetchPublishersAll());
   if (useVernacular)  work.push(vernacularMod.fetchVernacularWikipediaAll());
   if (useMastodon)    work.push(globalMod.fetchMastodonTrending());
   if (useMusicBrainz) work.push(globalMod.fetchMusicBrainzIndia());
-  if (useApple)       work.push(appleMod.fetchAppleAll());
+  if (useApple)       work.push(appleMod.fetchAppleAll(appleEmphasis));
   if (useYouTubeApi) {
     const { fetchYouTubeDataAPI } = await import("./sources-youtube-api.js");
     work.push(fetchYouTubeDataAPI());

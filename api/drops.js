@@ -357,7 +357,10 @@ function generateSmartGoal(drop, brandRaw, persona) {
 
 // ── Build pipeline as a function so the loop can call it with different opts ─
 async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3, lens = null, city = null, cityName = null, time = null, conf = null, stype = null, drop = null, terr = null, focus = null }) {
-  const rawSignalsAll = await buildSignals(buildOptions);
+  // The ASK routes the source layer: news queries, subreddits and Apple charts
+  // are chosen from the brand + lens + location, so signals are about the ask.
+  const ask = { brand: brandRaw, lens, city: cityName, keyword: focus };
+  const rawSignalsAll = await buildSignals({ ...buildOptions, ask });
   // SCOPE filters (hard): Location, Time, Confidence, Drop genuinely narrow
   // the pool. Each graceful — falls back if it would starve the output.
   const { signals: rawSignals, meta: filterMeta } = applyFilters(rawSignalsAll, { city, cityName, time, conf, drop });

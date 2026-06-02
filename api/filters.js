@@ -119,7 +119,10 @@ export function applyDropThreshold(signals, dropVal) {
 export function lensMultiplier(signalKey, lensVal) {
   const keys = LENS_MAP[String(lensVal)];
   if (!keys) return 1;                       // "All signals"
-  return keys.includes(signalKey) ? 2.4 : 0.5;
+  // Strong emphasis: when a lens is chosen, on-lens signals are boosted hard
+  // and off-lens ones suppressed hard, so a Gaming ask isn't drowned by the
+  // always-on music/trends sources.
+  return keys.includes(signalKey) ? 3.0 : 0.25;
 }
 export function typeMultiplier(signalKey, typeVal) {
   const v = String(typeVal);
