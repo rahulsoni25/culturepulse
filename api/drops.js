@@ -139,31 +139,44 @@ function clusterIntoThemes(signals) {
 // Build Level-2 manifestations from the top live signals in a theme.
 // Each signal becomes a "specific manifestation" — its raw query is the
 // evidence. We dedupe by signal lens so we get variety not 4 music items.
-function buildLevel2(themeSignals, max = 4) {
-  // Sort first; we'll do TWO passes — variety first, then fill remaining
-  // slots with any high-score signal regardless of lens.
-  const sorted = themeSignals.slice().sort((a, b) => b.score - a.score);
+// `globalSeen` (optional Set) dedupes across ALL cards. `primaryLenses` (the
+// theme's most-defining lenses) are floated to the top so each card leads with
+// on-topic evidence (Festival card → festival signals first, not tangential
+// experience_maximiser ones).
+function buildLevel2(themeSignals, max = 4, globalSeen = null, primaryLenses = []) {
+  const norm = (q) => String(q || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const prim = new Set(primaryLenses);
+  // Sort: primary-lens signals first, then by score — so relevance leads.
+  const sorted = themeSignals.slice().sort((a, b) => {
+    const pa = prim.has(a.signal) ? 1 : 0, pb = prim.has(b.signal) ? 1 : 0;
+    if (pa !== pb) return pb - pa;
+    return b.score - a.score;
+  });
   const seenLens = new Set();
   const out = [];
+  const take = (s) => {
+    out.push(asL2(s));
+    if (globalSeen) globalSeen.add(norm(s.query));
+  };
 
-  // Pass 1: prefer lens variety. Take the top signal per distinct lens.
+  // Pass 1: prefer lens variety, skipping anything already shown elsewhere.
   for (const s of sorted) {
+    if (globalSeen && globalSeen.has(norm(s.query))) continue;
     if (seenLens.has(s.signal)) continue;
     seenLens.add(s.signal);
-    out.push(asL2(s));
+    take(s);
     if (out.length >= max) break;
   }
-
-  // Pass 2: fill remaining slots from the sorted pool, even if lens repeats.
+  // Pass 2: fill remaining slots, still respecting the global dedupe.
   if (out.length < max) {
-    const used = new Set(out.map((l) => l.evidence.query));
+    const usedHere = new Set(out.map((l) => norm(l.evidence.query)));
     for (const s of sorted) {
-      if (used.has(s.query)) continue;
-      out.push(asL2(s));
+      const n = norm(s.query);
+      if (usedHere.has(n) || (globalSeen && globalSeen.has(n))) continue;
+      take(s);
       if (out.length >= max) break;
     }
   }
-
   return out;
 }
 
@@ -410,9 +423,37 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
     .slice(0, 4)
     .map(([k, v]) => [k, v]);
 
+  // ── EXCLUSIVE assignment ──────────────────────────────────────────────────
+  // A signal's lens can belong to several themes (music → 3 themes), which made
+  // the same signal appear as evidence in multiple cards. Assign each signal to
+  // its SINGLE best-fit theme among the selected four, so every card's Level-2
+  // manifestations are unique and on-topic. Best fit = how central the signal's
+  // lens is to the theme (primary lens scores highest) × theme affinity.
+  const selectedKeys = themeList.map(([k]) => k);
+  const lensCentrality = (themeKey, lens) => {
+    const lenses = THEMES[themeKey]?.lenses || [];
+    const idx = lenses.indexOf(lens);
+    return idx === -1 ? 0 : (lenses.length - idx); // primary lens = highest
+  };
+  const exclusive = {}; selectedKeys.forEach((k) => (exclusive[k] = []));
+  for (const s of signals) {
+    let bestK = null, bestScore = -1;
+    for (const k of selectedKeys) {
+      const c = lensCentrality(k, s.signal);
+      if (c <= 0) continue;
+      const fit = c * themeAffinity(k);
+      if (fit > bestScore) { bestScore = fit; bestK = k; }
+    }
+    if (bestK) exclusive[bestK].push(s);
+  }
+
+  const l2GlobalSeen = new Set(); // dedupe Level-2 evidence across ALL cards
   const drops = themeList.map(([themeKey, agg]) => {
     const theme = THEMES[themeKey];
-    const level_2 = buildLevel2(agg.signals, l2PerTheme);
+    // Build Level-2 from this theme's EXCLUSIVE signals (unique per card),
+    // with a global seen-set as a backstop so no evidence repeats anywhere.
+    const ownSignals = (exclusive[themeKey] && exclusive[themeKey].length) ? exclusive[themeKey] : agg.signals;
+    const level_2 = buildLevel2(ownSignals, l2PerTheme, l2GlobalSeen, (theme.lenses || []).slice(0, 2));
     const props = rankProperties({
       brand: brandRaw,
       personaKey,
