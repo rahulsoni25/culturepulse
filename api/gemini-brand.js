@@ -16,7 +16,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 const MODEL = "gemini-2.5-flash";
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 14000; // generous — the drops/report functions have a 30s budget
 
 const CORE_LENSES = [
   "music_streaming","festivals","late_night_out","food_delivery","gaming_mobile",
@@ -92,10 +92,13 @@ export async function geminiBrandProfile(brand) {
         },
       }),
     });
-    if (!r.ok) { _cache.set(cacheKey, null); return null; }
+    // NOTE: never cache failures — a transient miss (cold-start timeout, rate
+    // limit) must not permanently disable Gemini for a brand. Only successful
+    // profiles get cached.
+    if (!r.ok) return null;
     const j = await r.json();
     const text = j?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) { _cache.set(cacheKey, null); return null; }
+    if (!text) return null;
     const parsed = JSON.parse(text);
 
     // Normalise weights — ensure all 10 lenses present + clamped.
@@ -116,8 +119,7 @@ export async function geminiBrandProfile(brand) {
     _cache.set(cacheKey, profile);
     return profile;
   } catch {
-    _cache.set(cacheKey, null);
-    return null;
+    return null; // transient — don't cache, allow retry on next request
   } finally {
     clearTimeout(t);
   }
