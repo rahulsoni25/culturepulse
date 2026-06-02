@@ -1005,11 +1005,66 @@ var HIER_DROPS_CACHE = null;
 
 function renderDrops(){
   var el=document.getElementById("tab-drops");
-  el.innerHTML='<div class="loading"><div class="spin"></div>Building 3-level Culture Drops…</div>';
+  el.innerHTML='<div class="loading"><div class="spin"></div>Building live Culture Drops for "'+escapeHtml(brandLabel())+'"…</div>';
   fetchHierarchicalDrops(function(data){
-    if(data){ HIER_DROPS_CACHE = data; renderHierarchicalDrops(el, data); }
+    if(data){ HIER_DROPS_CACHE = data; renderHierarchicalDrops(el, data); renderLiveTop(data); }
     else    { renderLegacyDrops(el); }
   });
+}
+
+// Overwrite the mock KPI strip + alert with the LIVE result for the typed
+// brand/keyword, so the prominent top of the page reflects what was run.
+function renderLiveTop(data){
+  if(!data||!data.drops) return;
+  var drops=data.drops.slice();
+  var byScore=drops.slice().sort(function(a,b){return (b.culture&&b.culture.culture_score||0)-(a.culture&&a.culture.culture_score||0);});
+  var top=byScore[0]||{};
+  var topScore=top.culture?top.culture.culture_score:0;
+  var topVerdict=top.culture?top.culture.verdict:"";
+  var integrate=byScore.filter(function(d){return d.culture&&d.culture.culture_score>=60;}).length;
+  var bp=data.brand_profile||{};
+  var fr=data.review&&data.review.freshness?data.review.freshness.score:"—";
+  var scoreCol=topScore>=78?"kgreen":topScore>=60?"kgreen":topScore>=42?"kamber":"kred";
+
+  var kpis=[
+    {cls:"kblue",  label:"Signals analysed", val:(data._meta&&data._meta.signal_count_total)||0, sub:"live, this run", delta:(data.filters&&data.filters.focus_applied)?'focused on “'+data.brand+'”':'across '+(data.drops.length)+' themes', up:true},
+    {cls:scoreCol, label:"Top culture score", val:(topScore||0)+"/100", sub:(top.level_1&&top.level_1.name)||"—", delta:topVerdict, up:topScore>=60},
+    {cls:"kamber", label:"Themes surfaced",  val:data.drops.length, sub:"culture drops for this brand", delta:integrate+" worth integrating", up:integrate>0},
+    {cls:"kpurple",label:"Brand read",       val:(bp.inference_source||"—").replace("_"," "), sub:(bp.name||data.brand), delta:(bp.positioning||"").slice(0,30), up:true},
+    {cls:"kgreen", label:"Verified",         val:(data.review&&data.review.reviewer?data.review.reviewer.overall_score:"—")+"/10", sub:"agent-reviewed", delta:"freshness "+fr, up:true}
+  ];
+  var ks=document.getElementById("kstrip");
+  if(ks) ks.innerHTML=kpis.map(function(k){
+    return '<div class="ks '+k.cls+'"><div class="ks-label">'+k.label+'</div><div class="ks-val">'+escapeHtml(String(k.val))+'</div><div class="ks-sub">'+escapeHtml(k.sub)+'</div><div class="ks-delta '+(k.up?"up":"dn")+'">'+escapeHtml(k.delta)+'</div></div>';
+  }).join("");
+
+  // Live alert — the single most integrate-worthy drop for the typed brand.
+  var al=document.getElementById("alerts");
+  if(al){
+    if(top.level_1 && topScore>=42){
+      al.innerHTML='<div class="alert-banner" style="border-color:var(--green);background:var(--gdim)"><div class="alert-text"><strong style="color:var(--green)">Top opportunity for '+escapeHtml(data.brand)+':</strong> "'+escapeHtml(top.level_1.name)+'" scores <strong>'+topScore+'/100 — '+escapeHtml(topVerdict)+'</strong>. '+(top.tension?escapeHtml(top.tension.statement):"")+'</div><button class="alert-dismiss" onclick="this.parentNode.remove()">Dismiss</button></div>';
+    } else { al.innerHTML=""; }
+  }
+  // Replace the mock Google Trends grid with the live top signals for context.
+  renderLiveSignalStrip(data);
+}
+
+// Show the actual live signals powering this run (replaces the mock GT grid).
+function renderLiveSignalStrip(data){
+  var host=document.getElementById("gtrends-section"); if(!host) return;
+  // Gather top L2 evidence across drops = the real live signals driving themes.
+  var ev=[];
+  (data.drops||[]).forEach(function(d){ (d.level_2||[]).forEach(function(l){ if(l.evidence) ev.push({q:l.name,lift:l.evidence.lift,src:l.evidence.source,lens:l.lens}); }); });
+  ev=ev.sort(function(a,b){return (b.lift||0)-(a.lift||0);}).slice(0,8);
+  if(!ev.length){ host.innerHTML=""; return; }
+  var cards=ev.map(function(e){
+    var srcCol=e.src==='trends'?'#4285f4':e.src==='news'?'var(--green)':e.src==='reddit'?'#ff4500':e.src==='youtube'?'#f00':'var(--purple)';
+    return '<div class="gt-card"><div class="gt-query">'+escapeHtml((e.q||'').slice(0,70))+'</div>'+
+      '<div class="gt-signal" style="margin-top:5px"><span>'+escapeHtml(e.lens||'')+'</span></div>'+
+      '<div class="gt-lift" style="margin-top:6px"><span class="gt-lift-val" style="color:'+srcCol+'">'+(e.lift||0)+'×</span>'+
+      '<div class="gt-bar"><div class="gt-bar-fill" style="width:'+Math.min(100,(e.lift||0))+'%;background:'+srcCol+'"></div></div></div></div>';
+  }).join("");
+  host.innerHTML='<div class="gtrends-panel"><div class="gt-header"><div class="gt-title">Live signals powering "'+escapeHtml(data.brand)+'" · '+(data._meta&&data._meta.signal_count_total||0)+' analysed</div><span class="gt-badge">LIVE</span></div><div class="gt-grid">'+cards+'</div></div>';
 }
 
 function fetchHierarchicalDrops(cb){
@@ -1235,6 +1290,17 @@ function renderHierarchicalDrops(el, data){
         '</div>'+
         '<button class="act" onclick="renderDrops()" style="font-size:11px;padding:6px 12px">↻ Refresh</button>'+
       '</div>'+
+      // Focus status — honest about whether the typed term reshaped the feed
+      (function(){
+        var f=data.filters||{};
+        if(f.focus_note){
+          return '<div style="background:var(--adim);border:1px solid var(--amber)55;border-radius:8px;padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--t1);line-height:1.5">⚠️ '+escapeHtml(f.focus_note)+'</div>';
+        }
+        if(f.focus_applied && f.focus_text_matched>=2){
+          return '<div style="background:var(--gdim);border:1px solid var(--green)55;border-radius:8px;padding:9px 13px;margin-bottom:10px;font-size:12px;color:var(--t1)">✓ Reshaped around <strong>“'+escapeHtml(data.brand)+'”</strong> — '+f.focus_text_matched+' live signals directly match. Themes + scores below reflect it.</div>';
+        }
+        return '';
+      })()+
       // Score-a-culture-idea search
       '<div style="display:flex;gap:8px;align-items:stretch;margin-bottom:10px">'+
         '<input id="cs-input" placeholder="Score a culture idea — e.g. “Bhajan clubbing”, “sober raves”, “desi techno”" '+

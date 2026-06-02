@@ -59,6 +59,63 @@ function scored(signal, persona, brandWeight) {
   return { ...signal, score: lift * personaW * brandW };
 }
 
+// ── FOCUS RESHAPING ─────────────────────────────────────────────────────────
+// When the user types a culture concept/keyword ("bhajan clubbing", "sober
+// raves"), refocus the whole signal pool on it: boost signals that match the
+// phrase (by text token OR cultural-lens hint), dampen the rest — so the
+// surfaced themes/scores reorganise around what was typed. Graceful: if too
+// few signals match (e.g. the input is just a brand name), it does nothing.
+const FOCUS_LENS_HINTS = [
+  [/bhajan|devotional|kirtan|temple|spiritual|sufi|qawwali|aarti/i, ["music_streaming","cultural_explorer","festivals"]],
+  [/club|rave|party|nightlife|techno|edm|\bdj\b|rooftop|pub|bar/i, ["late_night_out","music_streaming"]],
+  [/festival|concert|gig|lineup|tour|sunburn|nh7|lollapalooza/i, ["festivals","music_streaming"]],
+  [/sneaker|streetwear|thrift|drip|outfit|fashion|fit\b/i, ["fashion_sneakers","social_identity","digital_expresser"]],
+  [/food|biryani|cafe|swiggy|zomato|dining|street ?food|midnight/i, ["food_delivery","late_night_out"]],
+  [/cricket|ipl|match|stadium|kabaddi/i, ["cricket_watching"]],
+  [/gaming|bgmi|esports|valorant|stream/i, ["gaming_mobile","digital_expresser"]],
+  [/reel|insta|aesthetic|viral|meme|content|grwm/i, ["digital_expresser","social_identity"]],
+  [/indie|underground|discovery|emerging|niche|hip.?hop|rap/i, ["cultural_explorer","music_streaming"]],
+  [/sober|wellness|mindful|calm|slow|chill|burnout|switch.?off/i, ["escapist_micro","cultural_explorer"]],
+  [/travel|trip|getaway|goa|trek|weekend|roadtrip/i, ["travel_weekend"]],
+];
+function focusLenses(q) {
+  const out = new Set();
+  for (const [re, lenses] of FOCUS_LENS_HINTS) if (re.test(q)) lenses.forEach((l) => out.add(l));
+  return out;
+}
+function applyFocus(signals, focusText) {
+  const q = String(focusText || "").toLowerCase().trim();
+  if (!q || q.length < 3) return { signals, applied: false, matched: 0 };
+  const tokens = q.split(/[^a-z0-9ऀ-ॿ஀-௿]+/i).filter((t) => t.length > 2);
+  const lenses = focusLenses(q);
+  let textMatched = 0, lensMatched = 0;
+  const out = signals.map((s) => {
+    const text = (s.query || "").toLowerCase();
+    const textHit = tokens.some((t) => text.includes(t));   // literal mention of what was typed
+    const lensHit = lenses.has(s.signal);                    // same broad cultural lane
+    // Literal text matches are the real signal — weight them far above a mere
+    // lens-category match, so a specific concept surfaces its actual evidence
+    // rather than drowning in the whole music/nightlife pool.
+    let mult;
+    if (textHit)      { mult = 3.6; textMatched++; }
+    else if (lensHit) { mult = 1.25; lensMatched++; }
+    else              { mult = 0.45; }
+    return { ...s, score: s.score * mult, _focus_hit: textHit || lensHit, _focus_text: textHit };
+  });
+  const matched = textMatched + lensMatched;
+  // Reshape ONLY when the concept literally appears in live signals
+  // (textMatched ≥ 2). Pure lens-category overlap isn't a real reshape — it
+  // just re-ranks the same broad pool. Be honest about which case it is.
+  if (textMatched >= 2) {
+    return { signals: out, applied: true, matched, textMatched, note: null };
+  }
+  // Concept not (or barely) present in the live feed → don't fake a reshape.
+  const note = lensMatched >= 4
+    ? `“${focusText}” isn't surfacing as a distinct signal in the live feed yet — showing the closest adjacent cultures (${[...lenses].slice(0,3).join(", ")}). Treat it as an emerging bet, not a measured trend.`
+    : `“${focusText}” has no live-signal footprint right now — this is an emerging / niche concept. Showing the brand's strongest current cultures instead.`;
+  return { signals, applied: false, matched, textMatched, note };
+}
+
 // Cluster live signals into Level-1 themes. Each theme has `lenses` declared
 // in properties.js → we sum the brand-weighted lifts of signals whose
 // `signal.signal` matches one of those lenses.
@@ -285,16 +342,21 @@ function generateSmartGoal(drop, brandRaw, persona) {
 }
 
 // ── Build pipeline as a function so the loop can call it with different opts ─
-async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3, lens = null, city = null }) {
+async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3, lens = null, city = null, focus = null }) {
   const rawSignalsAll = await buildSignals(buildOptions);
   // Apply Signal-Lens + City reach filters (graceful — fall back if too thin).
   const { signals: rawSignals, meta: filterMeta } = applyFilters(rawSignalsAll, { lens, city });
   // Infer the brand profile (known brand → Gemini → keyword/signal) and
   // score every signal by persona × inferred-brand weight.
   const brandProfile = await inferBrandProfileAsync(brandRaw, rawSignals);
-  const signals = rawSignals.map((s) => scored(s, persona, brandProfile.weight));
+  let signals = rawSignals.map((s) => scored(s, persona, brandProfile.weight));
+  // FOCUS: if the typed term is a culture concept (not just a brand), reshape
+  // the pool around it so the themes reorganise to match what was typed.
+  const focusResult = applyFocus(signals, focus);
+  signals = focusResult.signals;
   buildDropsOnce._lastFilterMeta = filterMeta;
   buildDropsOnce._lastBrandProfile = brandProfile;
+  buildDropsOnce._lastFocus = { applied: focusResult.applied, matched: focusResult.matched, text_matched: focusResult.textMatched || 0, note: focusResult.note || null, term: focus || null };
   buildDropsOnce._lastRawAll = rawSignalsAll;
 
   const themeAgg = clusterIntoThemes(signals);
@@ -438,6 +500,9 @@ export default async function handler(req, res) {
     // Signal-Lens + City reach filters (passed through to buildDropsOnce).
     const lens = url.searchParams.get("lens");   // "0".."4" or null
     const city = url.searchParams.get("city");   // "0".."2" or null
+    // Focus = the typed brand/keyword used to refocus the pool. Defaults to
+    // the brand text so any culture concept reshapes the dashboard.
+    const focus = url.searchParams.get("focus") || brandRaw;
 
     // Initial state. The reviewer agent will emit fix actions which update
     // this state for the next iteration.
@@ -445,7 +510,7 @@ export default async function handler(req, res) {
       buildOptions: { use_hackernews: false, extra_queries: [], theme_extras: [] },
       l2PerTheme: 4,
       propertyFloor: 0.3,
-      lens, city,
+      lens, city, focus,
     };
     const iterations = [];
 
@@ -504,6 +569,14 @@ export default async function handler(req, res) {
         lens: lens, city: city,
         lens_applied: buildDropsOnce._lastFilterMeta?.lens_applied || false,
         city_applied: buildDropsOnce._lastFilterMeta?.city_applied || false,
+        focus_applied: buildDropsOnce._lastFocus?.applied || false,
+        focus_matched: buildDropsOnce._lastFocus?.matched || 0,
+        focus_text_matched: buildDropsOnce._lastFocus?.text_matched || 0,
+        // Only surface the "not in live feed" note for unrecognised culture
+        // phrases — not for known/inferred brands (which drive via profile).
+        focus_note: (buildDropsOnce._lastBrandProfile?.inference_source === "generic"
+          ? buildDropsOnce._lastFocus?.note : null) || null,
+        focus_term: buildDropsOnce._lastFocus?.term || null,
       },
       _meta: {
         signal_count_total: final.round.signals.length,
