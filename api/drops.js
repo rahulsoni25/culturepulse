@@ -37,8 +37,9 @@ import { getPersona } from "./personas.js";
 import { THEMES, rankProperties } from "./properties.js";
 import { runFreshnessAgent } from "./agent-freshness.js";
 import { runReviewerAgent }   from "./agent-reviewer.js";
-import { applyFilters }       from "./filters.js";
+import { applyFilters, lensMultiplier, typeMultiplier } from "./filters.js";
 import { scoreTheme }         from "./culture-score.js";
+import { getCityCulture }     from "./cities.js";
 import { inferBrandProfileAsync } from "./brands.js";
 
 function brandKey(b) { return String(b || "tuborg").toLowerCase().replace(/[^a-z]/g, ""); }
@@ -342,18 +343,32 @@ function generateSmartGoal(drop, brandRaw, persona) {
 }
 
 // ── Build pipeline as a function so the loop can call it with different opts ─
-async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3, lens = null, city = null, focus = null }) {
+async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptions, l2PerTheme = 4, propertyFloor = 0.3, lens = null, city = null, cityName = null, time = null, conf = null, stype = null, drop = null, terr = null, focus = null }) {
   const rawSignalsAll = await buildSignals(buildOptions);
-  // Apply Signal-Lens + City reach filters (graceful — fall back if too thin).
-  const { signals: rawSignals, meta: filterMeta } = applyFilters(rawSignalsAll, { lens, city });
-  // Infer the brand profile (known brand → Gemini → keyword/signal) and
-  // score every signal by persona × inferred-brand weight.
+  // SCOPE filters (hard): Location, Time, Confidence, Drop genuinely narrow
+  // the pool. Each graceful — falls back if it would starve the output.
+  const { signals: rawSignals, meta: filterMeta } = applyFilters(rawSignalsAll, { city, cityName, time, conf, drop });
+  // Infer the brand profile (known brand → Gemini → keyword/signal).
   const brandProfile = await inferBrandProfileAsync(brandRaw, rawSignals);
-  let signals = rawSignals.map((s) => scored(s, persona, brandProfile.weight));
+  // City culture — regional lens bias + context for the chosen location.
+  const cityCulture = getCityCulture(cityName);
+  buildDropsOnce._lastCity = cityCulture;
+  // Score = lift × persona × brand × LENS-emphasis × TYPE-emphasis × CITY-bias.
+  // Emphasis filters reshape ranking without removing signals (the combine model).
+  let signals = rawSignals.map((s) => {
+    let sc = scored(s, persona, brandProfile.weight).score;
+    sc *= lensMultiplier(s.signal, lens);
+    sc *= typeMultiplier(s.signal, stype);
+    if (cityCulture && cityCulture.bias[s.signal]) sc *= cityCulture.bias[s.signal];
+    return { ...s, score: sc };
+  });
   // FOCUS: if the typed term is a culture concept (not just a brand), reshape
   // the pool around it so the themes reorganise to match what was typed.
   const focusResult = applyFocus(signals, focus);
   signals = focusResult.signals;
+  // Lens + Signal-type are emphasis filters — "applied" whenever non-default.
+  filterMeta.lens_applied  = lens != null && String(lens) !== "0";
+  filterMeta.stype_applied = stype != null && (String(stype) === "1" || String(stype) === "2");
   buildDropsOnce._lastFilterMeta = filterMeta;
   buildDropsOnce._lastBrandProfile = brandProfile;
   buildDropsOnce._lastFocus = { applied: focusResult.applied, matched: focusResult.matched, text_matched: focusResult.textMatched || 0, note: focusResult.note || null, term: focus || null };
@@ -370,8 +385,26 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
     const avg = lenses.reduce((a, l) => a + (brandProfile.weight[l] || 1), 0) / lenses.length;
     return Math.pow(avg, 2); // square so a strong brand lens (1.9) clearly outranks a neutral one
   };
-  const themeList = Object.entries(themeAgg)
-    .filter(([, v]) => v.lift_total > 0 && v.signals.length > 0)
+  // Territory per theme, derived from brand affinity (avg brand weight over
+  // the theme's lenses): ≥1.35 = owned · 0.95–1.35 = contested · <0.95 = gap.
+  const themeTerritory = (themeKey) => {
+    const lenses = THEMES[themeKey]?.lenses || [];
+    if (!lenses.length) return "contested";
+    const avg = lenses.reduce((a, l) => a + (brandProfile.weight[l] || 1), 0) / lenses.length;
+    return avg >= 1.35 ? "owned" : avg >= 0.95 ? "contested" : "gap";
+  };
+  const TERR_WANT = { "1": "owned", "2": "contested", "3": "gap" };
+  const terrWant = TERR_WANT[String(terr)] || null;
+  buildDropsOnce._lastTerr = { applied: false, want: terrWant };
+
+  let entries = Object.entries(themeAgg)
+    .filter(([, v]) => v.lift_total > 0 && v.signals.length > 0);
+  // Territory filter (graceful: only apply if ≥2 themes survive).
+  if (terrWant) {
+    const filtered = entries.filter(([k]) => themeTerritory(k) === terrWant);
+    if (filtered.length >= 1) { entries = filtered; buildDropsOnce._lastTerr.applied = true; }
+  }
+  const themeList = entries
     .map(([k, v]) => [k, v, v.lift_total * themeAffinity(k)])
     .sort((a, b) => b[2] - a[2])
     .slice(0, 4)
@@ -402,6 +435,7 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
       level_1: { key: theme.key, name: theme.name, description: theme.description },
       lift_score: +agg.lift_total.toFixed(2),
       signal_count: agg.signals.length,
+      territory: themeTerritory(themeKey),
       level_2,
       level_3: props.map((p) => ({
         id: p.id, name: p.name, type: p.type, fit_score: p.score,
@@ -497,11 +531,16 @@ export default async function handler(req, res) {
     const brand = titleCase(brandRaw);
     const personaKey = url.searchParams.get("persona") || "urban_gen_z";
     const persona = getPersona(personaKey);
-    // Signal-Lens + City reach filters (passed through to buildDropsOnce).
-    const lens = url.searchParams.get("lens");   // "0".."4" or null
-    const city = url.searchParams.get("city");   // "0".."2" or null
-    // Focus = the typed brand/keyword used to refocus the pool. Defaults to
-    // the brand text so any culture concept reshapes the dashboard.
+    // All filters, passed through to buildDropsOnce. Each is graceful.
+    const lens     = url.searchParams.get("lens");      // "0".."4"
+    const city     = url.searchParams.get("city");      // tier "0".."2"
+    const cityName = url.searchParams.get("cityName");  // specific city e.g. "mumbai"
+    const time     = url.searchParams.get("time");      // "0".."3" (24h..30d)
+    const conf     = url.searchParams.get("conf");      // "0".."3" (all..≥90%)
+    const stype    = url.searchParams.get("stype");     // "0".."2" (all/behaviour/feeling)
+    const drop     = url.searchParams.get("drop");      // "0".."3" (any..5×)
+    const terr     = url.searchParams.get("terr");      // "0".."3" (all/owned/contested/gap)
+    // Focus = the typed brand/keyword used to refocus the pool.
     const focus = url.searchParams.get("focus") || brandRaw;
 
     // Initial state. The reviewer agent will emit fix actions which update
@@ -510,7 +549,7 @@ export default async function handler(req, res) {
       buildOptions: { use_hackernews: false, extra_queries: [], theme_extras: [] },
       l2PerTheme: 4,
       propertyFloor: 0.3,
-      lens, city, focus,
+      lens, city, cityName, time, conf, stype, drop, terr, focus,
     };
     const iterations = [];
 
@@ -551,6 +590,11 @@ export default async function handler(req, res) {
       ok: true,
       brand,
       persona: { key: persona.key, name: persona.name, short: persona.short },
+      location: buildDropsOnce._lastCity ? {
+        name: buildDropsOnce._lastCity.name,
+        context: buildDropsOnce._lastCity.context,
+        signature: buildDropsOnce._lastCity.signature,
+      } : { name: "All India", context: null, signature: null },
       generated_at,
       drops: final.round.drops,
       review: {
@@ -566,9 +610,14 @@ export default async function handler(req, res) {
       } : null,
       filters: {
         brand, persona: persona.key,
-        lens: lens, city: city,
-        lens_applied: buildDropsOnce._lastFilterMeta?.lens_applied || false,
-        city_applied: buildDropsOnce._lastFilterMeta?.city_applied || false,
+        lens, city, cityName, time, conf, stype, drop, terr,
+        lens_applied:  buildDropsOnce._lastFilterMeta?.lens_applied || false,
+        city_applied:  buildDropsOnce._lastFilterMeta?.city_applied || false,
+        time_applied:  buildDropsOnce._lastFilterMeta?.time_applied || false,
+        conf_applied:  buildDropsOnce._lastFilterMeta?.conf_applied || false,
+        stype_applied: buildDropsOnce._lastFilterMeta?.stype_applied || false,
+        drop_applied:  buildDropsOnce._lastFilterMeta?.drop_applied || false,
+        terr_applied:  buildDropsOnce._lastTerr?.applied || false,
         focus_applied: buildDropsOnce._lastFocus?.applied || false,
         focus_matched: buildDropsOnce._lastFocus?.matched || 0,
         focus_text_matched: buildDropsOnce._lastFocus?.text_matched || 0,
