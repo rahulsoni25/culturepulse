@@ -23,6 +23,7 @@ import { runFreshnessAgent } from "./agent-freshness.js";
 import { runQualityAgent }   from "./agent-quality.js";
 import { getPersona }        from "./personas.js";
 import { applyFilters }      from "./filters.js";
+import { inferBrandProfile } from "./brands.js";
 
 // Map signal keys → human-readable cultural framing the mock uses to write prose.
 // (When we swap in Gemini, this becomes context in the prompt, not output text.)
@@ -39,63 +40,11 @@ const SIGNAL_FRAMES = {
   cultural_explorer:{ theme: "discovery before hype",    verb: "finding",    artefact: "before everyone else" },
 };
 
-// Brand profiles — drive signal weighting + tactical suggestions. Adding a
-// new brand = adding an entry here; the prose adapts automatically.
-const BRAND_PROFILES = {
-  tuborg: {
-    name: "Tuborg",
-    positioning: "challenger lager · youth · music-led",
-    weight: { music_streaming:1.6, festivals:1.5, late_night_out:1.4, food_delivery:1.2, gaming_mobile:1.1, fashion_sneakers:1.0, cricket_watching:0.7, digital_expresser:1.1, travel_weekend:1.0, cultural_explorer:1.1 },
-    delivery_partner: "Zomato",
-    music_partners: "rising indie / hip-hop artists (50K–500K)",
-    festival_play: "Tier-2 stage activation · pre-headliner window",
-    tone: "youthful, music-first, never product-led",
-  },
-  heineken: {
-    name: "Heineken",
-    positioning: "premium international · F1/football · aspirational",
-    weight: { music_streaming:1.2, festivals:1.3, late_night_out:1.5, fashion_sneakers:1.4, travel_weekend:1.3, cricket_watching:0.9, food_delivery:1.0, gaming_mobile:1.0, digital_expresser:1.1, cultural_explorer:1.2 },
-    delivery_partner: "Swiggy Instamart (premium SKU)",
-    music_partners: "internationally-touring artists, EDM circuits",
-    festival_play: "headline-sponsor positioning · F1 GP weekends",
-    tone: "premium, globally connected, restrained",
-  },
-  kingfisher: {
-    name: "Kingfisher",
-    positioning: "mass-market lager · cricket-anchored · Indian heritage",
-    weight: { cricket_watching:2.0, food_delivery:1.4, festivals:1.1, late_night_out:1.1, music_streaming:1.0, gaming_mobile:0.9, fashion_sneakers:0.7, travel_weekend:1.2, digital_expresser:0.9, cultural_explorer:0.9 },
-    delivery_partner: "Swiggy",
-    music_partners: "mass-market Bollywood playback artists",
-    festival_play: "IPL match-day activation · viewing parties",
-    tone: "warm, mass, cricket-anchored",
-  },
-  bira: {
-    name: "Bira91",
-    positioning: "craft challenger · urban Gen-Z · design-led",
-    weight: { fashion_sneakers:1.7, music_streaming:1.4, festivals:1.3, digital_expresser:1.5, food_delivery:1.2, late_night_out:1.3, gaming_mobile:1.0, cricket_watching:0.6, travel_weekend:1.1, cultural_explorer:1.3 },
-    delivery_partner: "Zomato + Swiggy (craft SKU placement)",
-    music_partners: "indie-electronica, alt-hip-hop, Spotify-native artists",
-    festival_play: "boutique festival presence · branded merch capsule",
-    tone: "design-forward, ironic, urban",
-  },
-};
-
-function getBrandProfile(brandName) {
-  const raw = String(brandName || "").toLowerCase();
-  const key = raw.replace(/[^a-z0-9]/g, "");      // "bira91", "tuborg"
-  const lettersOnly = raw.replace(/[^a-z]/g, ""); // "bira", "tuborg"
-  if (BRAND_PROFILES[key]) return BRAND_PROFILES[key];
-  if (BRAND_PROFILES[lettersOnly]) return BRAND_PROFILES[lettersOnly];
-  // Custom/unknown brand → use a generic challenger profile but keep the brand name.
-  return {
-    name: brandName,
-    positioning: "[brand profile not on file — using youth-challenger defaults]",
-    weight: { music_streaming:1.3, festivals:1.2, late_night_out:1.2, food_delivery:1.1, gaming_mobile:1.0, fashion_sneakers:1.1, cricket_watching:1.0, digital_expresser:1.1, travel_weekend:1.0, cultural_explorer:1.1 },
-    delivery_partner: "delivery platform",
-    music_partners: "mid-tier creators (50K–200K)",
-    festival_play: "Tier-2 stage activation",
-    tone: "neutral",
-  };
+// Brand profiles now come from the canonical inference engine (brands.js),
+// which resolves the 4 known brands AND any free-text brand/keyword input.
+// getBrandProfile is a thin wrapper kept for call-site compatibility.
+function getBrandProfile(brandName, signals = null) {
+  return inferBrandProfile(brandName, signals);
 }
 
 function pickTop(signals, signalKey, n = 1) {
@@ -313,7 +262,7 @@ export default async function handler(req, res) {
 
     const allSignals = await buildSignals();
     const { signals, meta: filterMeta } = applyFilters(allSignals, { lens: lensVal, city: cityVal });
-    const profile = getBrandProfile(brand);
+    const profile = getBrandProfile(brand, signals);
     const rawBrief = generateMockBrief({ brand: profile.name, age, city, signals, profile, persona });
 
     // ── REVIEW PIPELINE ─────────────────────────────────────────────────────

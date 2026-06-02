@@ -157,6 +157,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
 .morebtn:hover{border-color:var(--b2);color:var(--t1)}
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)}
 .pill{font-family:var(--mono);font-size:10px;color:var(--t2);background:var(--bg3);border:1px solid var(--b1);border-radius:999px;padding:4px 11px}
+.bchip{font-family:var(--mono);font-size:10px;color:var(--t2);background:var(--bg3);border:1px solid var(--b1);border-radius:999px;padding:2px 9px;cursor:pointer;transition:all .12s}
+.bchip:hover{border-color:var(--blue);color:var(--blue)}
 
 /* ALERTS */
 .alert-banner{display:flex;align-items:center;gap:12px;background:var(--rdim);border:1px solid var(--red);border-radius:10px;padding:11px 16px;margin-bottom:12px;animation:slideIn .3s ease}
@@ -440,8 +442,17 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
 <!-- FILTERS -->
 <div class="fbar">
   <div class="fbar-primary">
-    <div class="fg"><label>Brand</label>
-      <select id="fbrand"><option value="tuborg">Tuborg</option><option value="heineken">Heineken</option><option value="kingfisher">Kingfisher</option><option value="bira91">Bira91</option><option value="custom">Custom</option></select></div>
+    <div class="fg" style="flex:1.4"><label>Brand or keyword</label>
+      <input id="fbrand" value="Tuborg" placeholder="e.g. Red Bull, Nike, skincare, energy drink"
+        onkeydown="if(event.key==='Enter')go()"
+        style="width:100%;background:var(--bg3);border:1px solid var(--b1);color:var(--t1);font-size:12px;font-family:var(--mono);padding:9px 11px;border-radius:var(--r-sm)">
+      <div id="brand-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
+        <span class="bchip" onclick="setBrand('Tuborg')">Tuborg</span>
+        <span class="bchip" onclick="setBrand('Heineken')">Heineken</span>
+        <span class="bchip" onclick="setBrand('Kingfisher')">Kingfisher</span>
+        <span class="bchip" onclick="setBrand('Bira91')">Bira91</span>
+      </div>
+    </div>
     <div class="fg"><label>Audience</label>
       <select id="fage">
         <option value="urban_gen_z">16–24 · Urban Gen Z</option>
@@ -504,6 +515,10 @@ var PERSONA_LABEL = {
   moms_rural:            "28–42 Rural Moms"
 };
 function audienceLabel(){ return PERSONA_LABEL[iv("fage")] || "16–24 Urban Gen Z"; }
+/* Brand is now free-text (any brand or keyword). setBrand fills the input
+   from a preset chip and re-runs the analysis. */
+function setBrand(name){ var el=document.getElementById("fbrand"); if(el){ el.value=name; go(); } }
+function brandLabel(){ var v=(iv("fbrand")||"Tuborg").trim(); return v? v.split(/\s+/).map(function(w){return w.length<=3&&w===w.toUpperCase()?w:w[0].toUpperCase()+w.slice(1).toLowerCase();}).join(" "):"Tuborg"; }
 var credits = 42;
 var mode = "novice";
 var currentTab = "signals";
@@ -756,7 +771,7 @@ function renderAll(){
 }
 
 function renderPills(){
-  var bname={tuborg:"Tuborg",heineken:"Heineken",kingfisher:"Kingfisher",bira91:"Bira91",custom:"Custom"}[iv("fbrand")]||"Tuborg";
+  var bname=brandLabel();
   var data=[bname,audienceLabel(),["Metro + T1 + T2","Metro only","T1 + T2 only"][parseInt(iv("fcity"))%3],["All signals","Music","Gaming","Food","Fashion"][parseInt(iv("flens"))%5],["24h","3d","7d","30d"][parseInt(iv("ftime"))%4]];
   document.getElementById("pills").innerHTML=data.map(function(x){return '<span class="pill">'+x+'</span>';}).join("");
 }

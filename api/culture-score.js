@@ -18,15 +18,8 @@
 
 import { buildSignals } from "./signals.js";
 import { getPersona } from "./personas.js";
+import { inferBrandProfile } from "./brands.js";
 
-// Brand lens weights (slim copy — avoids circular import with pulse-report).
-const BRAND_WEIGHTS = {
-  tuborg:     { music_streaming:1.6, festivals:1.5, late_night_out:1.4, food_delivery:1.2, gaming_mobile:1.1, fashion_sneakers:1.0, cricket_watching:0.7, digital_expresser:1.1, travel_weekend:1.0, cultural_explorer:1.1 },
-  heineken:   { music_streaming:1.2, festivals:1.3, late_night_out:1.5, fashion_sneakers:1.4, travel_weekend:1.3, cricket_watching:0.9, food_delivery:1.0, gaming_mobile:1.0, digital_expresser:1.1, cultural_explorer:1.2 },
-  kingfisher: { cricket_watching:2.0, food_delivery:1.4, festivals:1.1, late_night_out:1.1, music_streaming:1.0, gaming_mobile:0.9, fashion_sneakers:0.7, travel_weekend:1.2, digital_expresser:0.9, cultural_explorer:0.9 },
-  bira91:     { fashion_sneakers:1.7, music_streaming:1.4, festivals:1.3, digital_expresser:1.5, food_delivery:1.2, late_night_out:1.3, gaming_mobile:1.0, cricket_watching:0.6, travel_weekend:1.1, cultural_explorer:1.3 },
-};
-const brandKey = (b) => String(b || "tuborg").toLowerCase().replace(/[^a-z]/g, "");
 const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
 
 // ── Verdict bands ────────────────────────────────────────────────────────────
@@ -51,7 +44,7 @@ function momentumScore(matched) {
 
 function brandFitScore(matched, brand, persona) {
   if (!matched.length) return 0;
-  const bw = BRAND_WEIGHTS[brandKey(brand)] || {};
+  const bw = inferBrandProfile(brand).weight || {};
   const pw = persona?.behavioural?.weights || {};
   // Average combined brand×persona weight across matched signals' lenses,
   // normalised (weight ~0.6–3.2 → 0-100, where 1.0 = neutral ≈ 50).

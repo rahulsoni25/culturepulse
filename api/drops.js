@@ -39,15 +39,7 @@ import { runFreshnessAgent } from "./agent-freshness.js";
 import { runReviewerAgent }   from "./agent-reviewer.js";
 import { applyFilters }       from "./filters.js";
 import { scoreTheme }         from "./culture-score.js";
-
-// Brand weight lookup (reusing the BRAND_PROFILES weights from pulse-report
-// would create a circular import — keep a slim copy here.)
-const BRAND_WEIGHTS = {
-  tuborg:     { music_streaming:1.6, festivals:1.5, late_night_out:1.4, food_delivery:1.2, gaming_mobile:1.1, fashion_sneakers:1.0, cricket_watching:0.7, digital_expresser:1.1, travel_weekend:1.0, cultural_explorer:1.1 },
-  heineken:   { music_streaming:1.2, festivals:1.3, late_night_out:1.5, fashion_sneakers:1.4, travel_weekend:1.3, cricket_watching:0.9, food_delivery:1.0, gaming_mobile:1.0, digital_expresser:1.1, cultural_explorer:1.2 },
-  kingfisher: { cricket_watching:2.0, food_delivery:1.4, festivals:1.1, late_night_out:1.1, music_streaming:1.0, gaming_mobile:0.9, fashion_sneakers:0.7, travel_weekend:1.2, digital_expresser:0.9, cultural_explorer:0.9 },
-  bira91:     { fashion_sneakers:1.7, music_streaming:1.4, festivals:1.3, digital_expresser:1.5, food_delivery:1.2, late_night_out:1.3, gaming_mobile:1.0, cricket_watching:0.6, travel_weekend:1.1, cultural_explorer:1.3 },
-};
+import { inferBrandProfile }  from "./brands.js";
 
 function brandKey(b) { return String(b || "tuborg").toLowerCase().replace(/[^a-z]/g, ""); }
 function titleCase(s) {
@@ -59,10 +51,11 @@ function titleCase(s) {
 }
 
 // Compute the persona × brand weighted score for one signal.
-function scored(signal, persona, brand) {
+// brandWeight is the inferred profile's weight map (works for ANY brand/keyword).
+function scored(signal, persona, brandWeight) {
   const lift = signal.lift || 0;
   const personaW = persona.behavioural?.weights?.[signal.signal] ?? 1;
-  const brandW   = BRAND_WEIGHTS[brandKey(brand)]?.[signal.signal] ?? 1;
+  const brandW   = (brandWeight && brandWeight[signal.signal]) ?? 1;
   return { ...signal, score: lift * personaW * brandW };
 }
 
@@ -296,15 +289,31 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
   const rawSignalsAll = await buildSignals(buildOptions);
   // Apply Signal-Lens + City reach filters (graceful — fall back if too thin).
   const { signals: rawSignals, meta: filterMeta } = applyFilters(rawSignalsAll, { lens, city });
-  const signals = rawSignals.map((s) => scored(s, persona, brand));
+  // Infer the brand profile (known brand, keyword, or signal-grounded) and
+  // score every signal by persona × inferred-brand weight.
+  const brandProfile = inferBrandProfile(brandRaw, rawSignals);
+  const signals = rawSignals.map((s) => scored(s, persona, brandProfile.weight));
   buildDropsOnce._lastFilterMeta = filterMeta;
+  buildDropsOnce._lastBrandProfile = brandProfile;
   buildDropsOnce._lastRawAll = rawSignalsAll;
 
   const themeAgg = clusterIntoThemes(signals);
+  // Theme ranking blends raw signal volume (lift_total) with the brand's
+  // AFFINITY for that theme's lenses — so a fashion brand surfaces fashion
+  // themes even when the live pool is music-heavy. Affinity = avg brand
+  // weight over the theme's lenses, applied as a multiplier on lift_total.
+  const themeAffinity = (themeKey) => {
+    const lenses = THEMES[themeKey]?.lenses || [];
+    if (!lenses.length) return 1;
+    const avg = lenses.reduce((a, l) => a + (brandProfile.weight[l] || 1), 0) / lenses.length;
+    return Math.pow(avg, 2); // square so a strong brand lens (1.9) clearly outranks a neutral one
+  };
   const themeList = Object.entries(themeAgg)
     .filter(([, v]) => v.lift_total > 0 && v.signals.length > 0)
-    .sort((a, b) => b[1].lift_total - a[1].lift_total)
-    .slice(0, 4);
+    .map(([k, v]) => [k, v, v.lift_total * themeAffinity(k)])
+    .sort((a, b) => b[2] - a[2])
+    .slice(0, 4)
+    .map(([k, v]) => [k, v]);
 
   const drops = themeList.map(([themeKey, agg]) => {
     const theme = THEMES[themeKey];
@@ -485,6 +494,11 @@ export default async function handler(req, res) {
         reviewer:  final.reviewer,
       },
       iterations,
+      brand_profile: buildDropsOnce._lastBrandProfile ? {
+        name: buildDropsOnce._lastBrandProfile.name,
+        positioning: buildDropsOnce._lastBrandProfile.positioning,
+        inference_source: buildDropsOnce._lastBrandProfile.inference_source,
+      } : null,
       filters: {
         brand, persona: persona.key,
         lens: lens, city: city,
@@ -494,7 +508,7 @@ export default async function handler(req, res) {
       _meta: {
         signal_count_total: final.round.signals.length,
         theme_count: final.round.drops.length,
-        brand_weight_applied: BRAND_WEIGHTS[brandKey(brandRaw)] ? "yes" : "default-fallback",
+        brand_inference: buildDropsOnce._lastBrandProfile?.inference_source || "unknown",
         iteration_count: iterations.length,
         final_score: final.reviewer.overall_score,
       },
