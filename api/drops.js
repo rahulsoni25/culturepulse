@@ -665,10 +665,21 @@ export default async function handler(req, res) {
         focus_applied: buildDropsOnce._lastFocus?.applied || false,
         focus_matched: buildDropsOnce._lastFocus?.matched || 0,
         focus_text_matched: buildDropsOnce._lastFocus?.text_matched || 0,
-        // Only surface the "not in live feed" note for unrecognised culture
-        // phrases — not for known/inferred brands (which drive via profile).
-        focus_note: (buildDropsOnce._lastBrandProfile?.inference_source === "generic"
-          ? buildDropsOnce._lastFocus?.note : null) || null,
+        // Transparency note — wording adapts to what was typed. Suppressed only
+        // for known hand-built brands and when the term genuinely reshaped the
+        // feed (focus applied). So generic signals are never passed off as
+        // "powering" a concept/brand the live feed doesn't actually contain.
+        focus_note: (() => {
+          const src = buildDropsOnce._lastBrandProfile?.inference_source;
+          if (src === "known" || buildDropsOnce._lastFocus?.applied) return null;
+          const term = brand;
+          if (src === "gemini" || src === "keyword") {
+            // Recognised brand/category — we inferred its cultural territory.
+            return `Showing ${term}'s inferred cultural territory. The live signals below are the cultures ${term} fits — not direct mentions of ${term} (most brands rarely appear verbatim in culture signals).`;
+          }
+          // Unrecognised concept with no live footprint.
+          return buildDropsOnce._lastFocus?.note || null;
+        })(),
         focus_term: buildDropsOnce._lastFocus?.term || null,
       },
       _meta: {

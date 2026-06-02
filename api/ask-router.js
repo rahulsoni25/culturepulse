@@ -90,6 +90,14 @@ export function deriveSourcePlan(ask = {}) {
   plan.newsTerms.forEach((t) => terms.add(t));
   // keyword (a culture concept typed in the box)
   if (keyword && keyword !== brandRaw) terms.add(`${keyword} india`);
+  // Concept expansion: for a multi-word typed term (brand OR keyword) also
+  // query each meaningful component, so "bhajan clubbing" actually fetches
+  // "bhajan" + "clubbing india" signals instead of only the rare exact phrase.
+  const STOP = new Set(["the","and","for","with","india","indian","of","in","a","an"]);
+  const conceptWords = (keyword || brandRaw).toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
+  if (conceptWords.length >= 2) {
+    conceptWords.slice(0, 3).forEach((w) => terms.add(`${w} india`));
+  }
 
   // city-scoped variants — append the city to the strongest 3 terms
   const baseTerms = [...terms];

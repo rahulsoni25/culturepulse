@@ -1072,7 +1072,12 @@ function renderLiveSignalStrip(data){
       '<div class="gt-lift" style="margin-top:6px"><span class="gt-lift-val" style="color:'+srcCol+'">'+(e.lift||0)+'×</span>'+
       '<div class="gt-bar"><div class="gt-bar-fill" style="width:'+Math.min(100,(e.lift||0))+'%;background:'+srcCol+'"></div></div></div></div>';
   }).join("");
-  host.innerHTML='<div class="gtrends-panel"><div class="gt-header"><div class="gt-title">Live signals powering "'+escapeHtml(data.brand)+'" · '+(data._meta&&data._meta.signal_count_total||0)+' analysed</div><span class="gt-badge">LIVE</span></div><div class="gt-grid">'+cards+'</div></div>';
+  // Honest title: only "powering X" when the term genuinely reshaped the feed.
+  var strong = data.filters && data.filters.focus_applied;
+  var title = strong
+    ? 'Live signals powering "'+escapeHtml(data.brand)+'" · '+(data._meta&&data._meta.signal_count_total||0)+' analysed'
+    : 'Closest live cultural signals · '+(data._meta&&data._meta.signal_count_total||0)+' analysed';
+  host.innerHTML='<div class="gtrends-panel"><div class="gt-header"><div class="gt-title">'+title+'</div><span class="gt-badge">LIVE</span></div><div class="gt-grid">'+cards+'</div></div>';
 }
 
 function fetchHierarchicalDrops(cb){
