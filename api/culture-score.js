@@ -18,7 +18,7 @@
 
 import { buildSignals } from "./signals.js";
 import { getPersona } from "./personas.js";
-import { inferBrandProfile } from "./brands.js";
+import { inferBrandProfile, inferBrandProfileAsync } from "./brands.js";
 
 const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
 
@@ -42,9 +42,9 @@ function momentumScore(matched) {
   return clamp((avgLift / 95) * 100);
 }
 
-function brandFitScore(matched, brand, persona) {
+function brandFitScore(matched, brand, persona, brandWeight) {
   if (!matched.length) return 0;
-  const bw = inferBrandProfile(brand).weight || {};
+  const bw = brandWeight || inferBrandProfile(brand).weight || {};
   const pw = persona?.behavioural?.weights || {};
   // Average combined brand×persona weight across matched signals' lenses,
   // normalised (weight ~0.6–3.2 → 0-100, where 1.0 = neutral ≈ 50).
@@ -79,10 +79,10 @@ function composite({ momentum, brand_fit, timing, evidence }) {
 }
 
 // ── Core scorer ────────────────────────────────────────────────────────────
-function scoreFromMatched(matched, brand, persona) {
+function scoreFromMatched(matched, brand, persona, brandWeight) {
   const breakdown = {
     momentum:  momentumScore(matched),
-    brand_fit: brandFitScore(matched, brand, persona),
+    brand_fit: brandFitScore(matched, brand, persona, brandWeight),
     timing:    timingScore(matched),
     evidence:  evidenceScore(matched),
   };
@@ -92,8 +92,9 @@ function scoreFromMatched(matched, brand, persona) {
 }
 
 // Score a Culture Drop theme: matched = the signals already clustered into it.
-export function scoreTheme({ themeSignals, brand, persona }) {
-  const r = scoreFromMatched(themeSignals || [], brand, persona);
+// brandWeight (optional) = pre-resolved profile weights (avoids re-inferring).
+export function scoreTheme({ themeSignals, brand, persona, brandWeight }) {
+  const r = scoreFromMatched(themeSignals || [], brand, persona, brandWeight);
   return {
     culture_score: r.score,
     verdict: r.verdict.label,
@@ -130,7 +131,7 @@ function lensesForQuery(q) {
   return [...out];
 }
 
-export function scoreQuery({ query, signals, brand, persona }) {
+export function scoreQuery({ query, signals, brand, persona, brandWeight }) {
   const q = String(query || "").toLowerCase().trim();
   const tokens = q.split(/[^a-z0-9ऀ-ॿ஀-௿ঀ-৿]+/i)
     .filter((t) => t && t.length > 2 && !STOP.has(t));
@@ -145,7 +146,7 @@ export function scoreQuery({ query, signals, brand, persona }) {
     return tokenHit || lensHit;
   });
 
-  const r = scoreFromMatched(matched, brand, persona);
+  const r = scoreFromMatched(matched, brand, persona, brandWeight);
 
   // If almost nothing matched, it's a genuinely emerging/unproven idea —
   // be honest rather than inventing a score.
@@ -185,7 +186,8 @@ export default async function handler(req, res) {
       return res.end(JSON.stringify({ ok: false, error: "Provide ?q=<culture idea>" }));
     }
     const signals = await buildSignals();
-    const result = scoreQuery({ query, signals, brand, persona });
+    const bp = await inferBrandProfileAsync(brand, signals);
+    const result = scoreQuery({ query, signals, brand, persona, brandWeight: bp.weight });
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({ ok: true, brand, persona: persona.key, ...result }));

@@ -39,7 +39,7 @@ import { runFreshnessAgent } from "./agent-freshness.js";
 import { runReviewerAgent }   from "./agent-reviewer.js";
 import { applyFilters }       from "./filters.js";
 import { scoreTheme }         from "./culture-score.js";
-import { inferBrandProfile }  from "./brands.js";
+import { inferBrandProfileAsync } from "./brands.js";
 
 function brandKey(b) { return String(b || "tuborg").toLowerCase().replace(/[^a-z]/g, ""); }
 function titleCase(s) {
@@ -289,9 +289,9 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
   const rawSignalsAll = await buildSignals(buildOptions);
   // Apply Signal-Lens + City reach filters (graceful — fall back if too thin).
   const { signals: rawSignals, meta: filterMeta } = applyFilters(rawSignalsAll, { lens, city });
-  // Infer the brand profile (known brand, keyword, or signal-grounded) and
+  // Infer the brand profile (known brand → Gemini → keyword/signal) and
   // score every signal by persona × inferred-brand weight.
-  const brandProfile = inferBrandProfile(brandRaw, rawSignals);
+  const brandProfile = await inferBrandProfileAsync(brandRaw, rawSignals);
   const signals = rawSignals.map((s) => scored(s, persona, brandProfile.weight));
   buildDropsOnce._lastFilterMeta = filterMeta;
   buildDropsOnce._lastBrandProfile = brandProfile;
@@ -349,7 +349,7 @@ async function buildDropsOnce({ brand, brandRaw, personaKey, persona, buildOptio
     };
     // Culture Score — the decision layer: a readable 0-100 + verdict so a
     // planner knows whether to integrate this theme into the campaign.
-    dropObj.culture = scoreTheme({ themeSignals: agg.signals, brand: brandRaw, persona });
+    dropObj.culture = scoreTheme({ themeSignals: agg.signals, brand: brandRaw, persona, brandWeight: brandProfile.weight });
     // SMART goal — the "what do I do about this" layer.
     dropObj.smart_goal = generateSmartGoal(dropObj, brandRaw, persona);
     return dropObj;

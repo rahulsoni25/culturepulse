@@ -134,6 +134,54 @@ export function getBrandWeights(input) {
   return inferBrandProfile(input).weight;
 }
 
+// Async resolver with the Gemini layer on top. Use this from API handlers
+// (all async). Order: known brand → Gemini (if key + not a confident keyword
+// match) → keyword/signal fallback. Always resolves to a usable profile.
+export async function inferBrandProfileAsync(input, signals = null) {
+  const raw = String(input || "").trim();
+  const key = normKey(raw);
+  const letters = raw.toLowerCase().replace(/[^a-z]/g, "");
+  // 1) Known brand — never call Gemini for these (hand profiles are best).
+  if (BRAND_PROFILES[key])     return { ...BRAND_PROFILES[key], inference_source: "known" };
+  if (BRAND_PROFILES[letters]) return { ...BRAND_PROFILES[letters], inference_source: "known" };
+  if (!raw)                    return { ...BRAND_PROFILES.tuborg, inference_source: "default" };
+
+  // First get the free keyword/signal profile (also our fallback).
+  const baseline = inferBrandProfile(raw, signals);
+
+  // 2) Gemini layer — only when a key exists. We blend: Gemini supplies
+  //    positioning/partners/tone + refined weights; if the keyword path was
+  //    already confident, Gemini still improves the prose + nuance.
+  try {
+    const { geminiAvailable, geminiBrandProfile } = await import("./gemini-brand.js");
+    if (geminiAvailable()) {
+      const g = await geminiBrandProfile(raw);
+      if (g && g.weight) {
+        // Blend weights: average Gemini with the keyword baseline so we keep
+        // grounding while gaining Gemini's brand-specific nuance.
+        const weight = {};
+        Object.keys(baseline.weight).forEach((l) => {
+          weight[l] = Math.round(((baseline.weight[l] + (g.weight[l] || 1)) / 2) * 100) / 100;
+        });
+        return {
+          name: titleCase(raw),
+          positioning: g.positioning,
+          weight,
+          delivery_partner: g.delivery_partner,
+          music_partners: g.music_partners,
+          festival_play: g.festival_play,
+          tone: g.tone,
+          inference_source: baseline.inference_source === "generic" ? "gemini" : "gemini+keyword",
+          inferred: true,
+        };
+      }
+    }
+  } catch { /* fall through to baseline */ }
+
+  // 3) Free fallback.
+  return baseline;
+}
+
 // ── The inference engine ────────────────────────────────────────────────────
 export function inferBrandProfile(input, signals = null) {
   const raw = String(input || "").trim();

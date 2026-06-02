@@ -23,7 +23,7 @@ import { runFreshnessAgent } from "./agent-freshness.js";
 import { runQualityAgent }   from "./agent-quality.js";
 import { getPersona }        from "./personas.js";
 import { applyFilters }      from "./filters.js";
-import { inferBrandProfile } from "./brands.js";
+import { inferBrandProfileAsync } from "./brands.js";
 
 // Map signal keys → human-readable cultural framing the mock uses to write prose.
 // (When we swap in Gemini, this becomes context in the prompt, not output text.)
@@ -43,8 +43,8 @@ const SIGNAL_FRAMES = {
 // Brand profiles now come from the canonical inference engine (brands.js),
 // which resolves the 4 known brands AND any free-text brand/keyword input.
 // getBrandProfile is a thin wrapper kept for call-site compatibility.
-function getBrandProfile(brandName, signals = null) {
-  return inferBrandProfile(brandName, signals);
+async function getBrandProfile(brandName, signals = null) {
+  return inferBrandProfileAsync(brandName, signals);
 }
 
 function pickTop(signals, signalKey, n = 1) {
@@ -262,7 +262,7 @@ export default async function handler(req, res) {
 
     const allSignals = await buildSignals();
     const { signals, meta: filterMeta } = applyFilters(allSignals, { lens: lensVal, city: cityVal });
-    const profile = getBrandProfile(brand, signals);
+    const profile = await getBrandProfile(brand, signals);
     const rawBrief = generateMockBrief({ brand: profile.name, age, city, signals, profile, persona });
 
     // ── REVIEW PIPELINE ─────────────────────────────────────────────────────
