@@ -368,29 +368,29 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
 <div class="modal-bg" id="credit-modal" style="display:none">
 <div class="modal">
   <div class="modal-title">Upgrade CulturePulse</div>
-  <div class="modal-sub">Each analysis run costs credits. Choose a plan to keep the insights flowing.</div>
+  <div class="modal-sub">Each analysis uses credits. Pick a plan that fits your run volume.</div>
   <div class="plan-grid">
     <div class="plan">
       <div class="plan-name">Starter</div>
       <div class="plan-price">Free</div>
       <div class="plan-credits">50 credits / month</div>
-      <div class="plan-feat">5 signal runs · Basic drops · Culture fit only</div>
+      <div class="plan-feat">25 analyses / month · all six tabs · daily refresh</div>
     </div>
     <div class="plan featured">
       <div class="plan-badge">Most popular</div>
-      <div class="plan-name">Pro</div>
+      <div class="plan-name">Growth</div>
       <div class="plan-price">$49<span style="font-size:14px;font-weight:400">/mo</span></div>
       <div class="plan-credits">500 credits / month</div>
-      <div class="plan-feat">Unlimited runs · All tabs · Google Trends feed · Export PDF · 3 brands</div>
+      <div class="plan-feat">250 analyses / month · Pulse Report PDF · 3 brands · priority signals</div>
     </div>
     <div class="plan">
       <div class="plan-name">Agency</div>
       <div class="plan-price">$199<span style="font-size:14px;font-weight:400">/mo</span></div>
       <div class="plan-credits">2,000 credits / month</div>
-      <div class="plan-feat">Unlimited brands · API access · White-label · Team seats · Priority support</div>
+      <div class="plan-feat">Unlimited brands · API access · white-label · team seats · priority support</div>
     </div>
   </div>
-  <div class="modal-close" onclick="closeModal()">Continue with free plan (50 credits remaining)</div>
+  <div class="modal-close" onclick="closeModal()">Continue with free plan</div>
 </div>
 </div>
 
@@ -402,21 +402,21 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
         <div class="ntitle">CulturePulse</div>
         <span class="nbeta">BETA</span>
       </div>
-      <div class="nsub">Brand Culture Intelligence</div>
+      <div class="nsub">See which cultural moments your brand owns, contests, or is missing — live</div>
     </div>
   </div>
   <div class="nav-right">
     <div class="mode-toggle">
       <button class="mode-btn active" id="mode-novice" onclick="setMode('novice')">Simple</button>
-      <button class="mode-btn" id="mode-pro" onclick="setMode('pro')">Pro</button>
+      <button class="mode-btn" id="mode-pro" onclick="setMode('pro')">Advanced</button>
     </div>
     <div class="credits-badge">
       <div>
         <div class="cr-label">Credits</div>
-        <div class="cr-val" id="cr-val">42</div>
+        <div class="cr-val" id="cr-val">50</div>
       </div>
       <div>
-        <div class="cr-bar-wrap"><div class="cr-bar" id="cr-bar" style="width:84%"></div></div>
+        <div class="cr-bar-wrap"><div class="cr-bar" id="cr-bar" style="width:100%"></div></div>
         <div class="cr-upgrade" onclick="showModal()">Upgrade ↗</div>
       </div>
     </div>
@@ -474,22 +474,23 @@ body{background:var(--bg);color:var(--t1);font-family:var(--fm);min-height:100vh
         <option value="kolkata">Kolkata</option>
         <option value="pune">Pune</option>
       </select></div>
-    <div class="fg"><label>Signal lens</label>
-      <select id="flens"><option value="0">All signals</option><option value="1">Music + festivals</option><option value="2">Gaming + tech</option><option value="3">Food + lifestyle</option><option value="4">Fashion + identity</option></select></div>
+    <div class="fg"><label>Culture domain</label>
+      <select id="flens"><option value="0">All domains</option><option value="1">Music + festivals</option><option value="2">Gaming + tech</option><option value="3">Food + lifestyle</option><option value="4">Fashion + identity</option></select></div>
     <button class="morebtn" id="morebtn" onclick="toggleAdvFilters()">More filters ▾</button>
-    <button class="abtn" onclick="go()">Run analysis ›<span class="abtn-cost">-2 cr</span></button>
+    <button class="abtn" onclick="go()">Run analysis<span class="abtn-cost">2 credits</span></button>
   </div>
   <div class="fbar-adv" id="fbar-adv">
+    <div style="grid-column:1/-1;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:2px">All filters below shape the live <strong style="color:var(--t2)">Culture Drops</strong> output</div>
     <div class="fg"><label>Time window</label>
       <select id="ftime"><option value="0">Last 24 hours</option><option value="1">Last 3 days</option><option value="2">Last 7 days</option><option value="3">Last 30 days</option></select></div>
     <div class="fg"><label>Drop threshold</label>
-      <select id="fdrop"><option value="0">Any signal</option><option value="1">2× + lift</option><option value="2">3× + lift</option><option value="3">5× + major</option></select></div>
+      <select id="fdrop"><option value="0">Any intensity</option><option value="1">2× lift</option><option value="2">3× lift</option><option value="3">5× spike</option></select></div>
     <div class="fg"><label>Min confidence</label>
       <select id="fconf"><option value="0">All</option><option value="1">≥ 70%</option><option value="2">≥ 85%</option><option value="3">≥ 90%</option></select></div>
-    <div class="fg"><label>Territory filter</label>
+    <div class="fg"><label>Territory</label>
       <select id="fterr"><option value="0">All territories</option><option value="1">Owned by brand</option><option value="2">Contested</option><option value="3">Gap / unclaimed</option></select></div>
     <div class="fg"><label>Signal type</label>
-      <select id="ftype"><option value="0">All types</option><option value="1">Behaviour only</option><option value="2">Feeling only</option></select></div>
+      <select id="ftype"><option value="0">All types</option><option value="1">Behaviour ("doing")</option><option value="2">Feeling ("perceiving")</option></select></div>
   </div>
   <div class="pills" id="pills"></div>
 </div>
@@ -527,7 +528,7 @@ function brandLabel(){ var v=(iv("fbrand")||"Tuborg").trim(); return v? v.split(
 /* City dropdown now carries city names ("mumbai") or "all". */
 var CITY_LABEL={all:"All India",mumbai:"Mumbai",delhi:"Delhi NCR",bangalore:"Bangalore",hyderabad:"Hyderabad",chennai:"Chennai",kolkata:"Kolkata",pune:"Pune"};
 function cityLabel(){ return CITY_LABEL[iv("fcity")]||"All India"; }
-var credits = 42;
+var credits = 50;
 var mode = "novice";
 var currentTab = "signals";
 var SIGS = [];
@@ -780,7 +781,7 @@ function renderAll(){
 
 function renderPills(){
   var bname=brandLabel();
-  var data=[bname,audienceLabel(),cityLabel(),["All signals","Music","Gaming","Food","Fashion"][parseInt(iv("flens"))%5],["24h","3d","7d","30d"][parseInt(iv("ftime"))%4]];
+  var data=[bname,audienceLabel(),cityLabel(),["All domains","Music","Gaming","Food","Fashion"][parseInt(iv("flens"))%5],["24h","3d","7d","30d"][parseInt(iv("ftime"))%4]];
   document.getElementById("pills").innerHTML=data.map(function(x){return '<span class="pill">'+x+'</span>';}).join("");
 }
 
@@ -989,7 +990,7 @@ function renderNoviceSignals(el){
   }).join("");
   el.innerHTML='<div class="sec"><div class="ey">What your audience is doing right now · simple view</div>'+
     '<div class="novice-grid">'+cards+'</div>'+
-    '<div class="acts"><button class="act" onclick="setMode(\'pro\')">Switch to Pro view for detailed data ↗</button></div>'+
+    '<div class="acts"><button class="act" onclick="setMode(\'pro\')">Switch to Advanced view for detailed data ↗</button></div>'+
   '</div>';
 }
 
@@ -1409,7 +1410,7 @@ function renderLegacyDrops(el){
       '</div>';
     }).join("");
     el.innerHTML='<div class="sec"><div class="ey">What is spiking right now · simple view</div>'+cards_nov+
-      '<div class="acts"><button class="act" onclick="setMode(\'pro\')">See full data in Pro view ↗</button>'+
+      '<div class="acts"><button class="act" onclick="setMode(\'pro\')">See full data in Advanced view ↗</button>'+
       '<button class="act primary" onclick="openClaude(\'Write a creative brief responding to the culture drop: '+drops[0].label+' — tension: '+drops[0].tension+'\')">Brief this in Claude ↗</button>'+
       '</div></div>';
     return;
@@ -1553,7 +1554,7 @@ function renderFit(){
             '<div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+Math.round(g.lp/(g.bd||.01)*100)+'%;background:'+u+';border-radius:2px"></div></div>'+
           '</div>';
         }).join("")+
-        '<div class="acts"><button class="act" onclick="setMode(\'pro\')">See full gap analysis in Pro view ↗</button></div>'+
+        '<div class="acts"><button class="act" onclick="setMode(\'pro\')">See full gap analysis in Advanced view ↗</button></div>'+
       '</div>';
     return;
   }
