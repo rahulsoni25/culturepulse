@@ -243,14 +243,14 @@ async function buildSignals(options = {}) {
   // it falls back to the broad default fetch (backwards-compatible).
   let plan = null;
   if (options.ask) {
-    const { deriveSourcePlan } = await import("./ask-router.js");
+    const { deriveSourcePlan } = await import("../lib/ask-router.js");
     plan = deriveSourcePlan(options.ask);
   }
 
   // News queries: ask-derived when routed, else the broad defaults.
   let newsQueries = plan && plan.newsQueries.length ? [...plan.newsQueries] : [...NEWS_QUERIES];
   if (options.extra_queries?.length || options.theme_extras?.length) {
-    const { adhocQueries, extraQueriesForThemes } = await import("./sources-extra.js");
+    const { adhocQueries, extraQueriesForThemes } = await import("../lib/sources-extra.js");
     if (options.extra_queries?.length) newsQueries = newsQueries.concat(adhocQueries(options.extra_queries));
     if (options.theme_extras?.length)  newsQueries = newsQueries.concat(extraQueriesForThemes(options.theme_extras));
   }
@@ -278,11 +278,11 @@ async function buildSignals(options = {}) {
   const useTmdb         = !!process.env.TMDB_API_KEY          && options.use_tmdb !== false;
 
   // Lazy-load source modules only if at least one fetcher in that module is on.
-  const socialMod      = (useReddit || useYouTube)  ? await import("./sources-social.js")     : null;
-  const publishersMod  = usePublishers              ? await import("./sources-publishers.js") : null;
-  const vernacularMod  = useVernacular              ? await import("./sources-vernacular.js") : null;
-  const globalMod      = (useMastodon || useMusicBrainz) ? await import("./sources-global.js") : null;
-  const appleMod       = useApple                   ? await import("./sources-apple.js")      : null;
+  const socialMod      = (useReddit || useYouTube)  ? await import("../lib/sources-social.js")     : null;
+  const publishersMod  = usePublishers              ? await import("../lib/sources-publishers.js") : null;
+  const vernacularMod  = useVernacular              ? await import("../lib/sources-vernacular.js") : null;
+  const globalMod      = (useMastodon || useMusicBrainz) ? await import("../lib/sources-global.js") : null;
+  const appleMod       = useApple                   ? await import("../lib/sources-apple.js")      : null;
 
   const work = [
     fetchGoogleTrendsIN(),
@@ -297,31 +297,31 @@ async function buildSignals(options = {}) {
   if (useMusicBrainz) work.push(globalMod.fetchMusicBrainzIndia());
   if (useApple)       work.push(appleMod.fetchAppleAll(appleEmphasis));
   if (useYouTubeApi) {
-    const { fetchYouTubeDataAPI } = await import("./sources-youtube-api.js");
+    const { fetchYouTubeDataAPI } = await import("../lib/sources-youtube-api.js");
     work.push(fetchYouTubeDataAPI());
   }
   if (useSpotify) {
-    const { fetchSpotifyIndia } = await import("./sources-spotify.js");
+    const { fetchSpotifyIndia } = await import("../lib/sources-spotify.js");
     work.push(fetchSpotifyIndia());
   }
   if (useLastfm) {
-    const { fetchLastfmIndia } = await import("./sources-lastfm.js");
+    const { fetchLastfmIndia } = await import("../lib/sources-lastfm.js");
     work.push(fetchLastfmIndia());
   }
   if (useTicketmaster) {
-    const { fetchTicketmasterIndia } = await import("./sources-ticketmaster.js");
+    const { fetchTicketmasterIndia } = await import("../lib/sources-ticketmaster.js");
     work.push(fetchTicketmasterIndia());
   }
   if (useBooks) {
-    const { fetchGoogleBooksIndia } = await import("./sources-books.js");
+    const { fetchGoogleBooksIndia } = await import("../lib/sources-books.js");
     work.push(fetchGoogleBooksIndia());
   }
   if (useTmdb) {
-    const { fetchTMDB } = await import("./sources-tmdb.js");
+    const { fetchTMDB } = await import("../lib/sources-tmdb.js");
     work.push(fetchTMDB());
   }
   if (options.use_hackernews) {
-    const { fetchHackerNews } = await import("./sources-extra.js");
+    const { fetchHackerNews } = await import("../lib/sources-extra.js");
     work.push(fetchHackerNews());
   }
   const results = await Promise.all(work);
@@ -351,7 +351,7 @@ async function buildSignals(options = {}) {
   // reviewer asks (use_evergreen=true) or when live sources came up empty.
   let evergreen = [];
   if (options.use_evergreen) {
-    const { fetchEvergreen } = await import("./sources-evergreen.js");
+    const { fetchEvergreen } = await import("../lib/sources-evergreen.js");
     evergreen = fetchEvergreen({ themes: options.evergreen_themes || null, limit: options.evergreen_limit || 20 });
   }
   const all = [

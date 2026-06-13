@@ -33,14 +33,14 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { buildSignals } from "./signals.js";
-import { getPersona } from "./personas.js";
-import { THEMES, rankProperties } from "./properties.js";
-import { runFreshnessAgent } from "./agent-freshness.js";
-import { runReviewerAgent }   from "./agent-reviewer.js";
-import { applyFilters, lensMultiplier, typeMultiplier } from "./filters.js";
+import { getPersona } from "../lib/personas.js";
+import { THEMES, rankProperties } from "../lib/properties.js";
+import { runFreshnessAgent } from "../lib/agent-freshness.js";
+import { runReviewerAgent }   from "../lib/agent-reviewer.js";
+import { applyFilters, lensMultiplier, typeMultiplier } from "../lib/filters.js";
 import { scoreTheme }         from "./culture-score.js";
-import { getCityCulture }     from "./cities.js";
-import { inferBrandProfileAsync } from "./brands.js";
+import { getCityCulture }     from "../lib/cities.js";
+import { inferBrandProfileAsync } from "../lib/brands.js";
 
 function brandKey(b) { return String(b || "tuborg").toLowerCase().replace(/[^a-z]/g, ""); }
 function titleCase(s) {

@@ -17,8 +17,8 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { buildSignals } from "./signals.js";
-import { getPersona } from "./personas.js";
-import { inferBrandProfile, inferBrandProfileAsync } from "./brands.js";
+import { getPersona } from "../lib/personas.js";
+import { inferBrandProfile, inferBrandProfileAsync } from "../lib/brands.js";
 
 const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
 

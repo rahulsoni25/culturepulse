@@ -19,11 +19,11 @@
 //   ?city=Metro+T1+T2  (default: Metro + T1 + T2)
 
 import { buildSignals } from "./signals.js";
-import { runFreshnessAgent } from "./agent-freshness.js";
-import { runQualityAgent }   from "./agent-quality.js";
-import { getPersona }        from "./personas.js";
-import { applyFilters }      from "./filters.js";
-import { inferBrandProfileAsync } from "./brands.js";
+import { runFreshnessAgent } from "../lib/agent-freshness.js";
+import { runQualityAgent }   from "../lib/agent-quality.js";
+import { getPersona }        from "../lib/personas.js";
+import { applyFilters }      from "../lib/filters.js";
+import { inferBrandProfileAsync } from "../lib/brands.js";
 
 // Map signal keys → human-readable cultural framing the mock uses to write prose.
 // (When we swap in Gemini, this becomes context in the prompt, not output text.)
