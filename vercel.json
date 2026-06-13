@@ -21,6 +21,9 @@
     },
     "api/culture-score.js": {
       "maxDuration": 15
+    },
+    "api/gtrends.js": {
+      "maxDuration": 15
     }
   },
   "headers": [

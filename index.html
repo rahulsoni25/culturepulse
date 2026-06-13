@@ -814,32 +814,138 @@ function renderKPIs(){
   }).join("");
 }
 
+/* Real Google Trends feed. Fetches /api/gtrends for the typed brand/keyword,
+   reacting to the City (geo) + Time-window filters. Google Trends provides
+   TIME × GEOGRAPHY × RELATED QUERIES — it has no age/gender data, so the
+   audience layer below is a clearly-labelled CulturePulse estimate, not Google's.
+   On a server block (429) or empty result we fall back honestly. */
+var GTRENDS_OK = false;
+
+// CulturePulse audience interpretation per persona — our estimate, NOT Google's.
+var PERSONA_TREND_NOTE = {
+  urban_gen_z:           "skews mobile-first, late-night, trend-led — rising queries surface here first",
+  millennials_urban:     "skews convenience + experience — top (established) queries matter more than breakouts",
+  millennials_semiurban: "skews value + family — vernacular and regional spikes are the real signal",
+  working_professionals: "skews utility + status — weekday search patterns, premium intent",
+  moms_urban:            "skews household + kids + health — daytime, planning-led search behaviour",
+  moms_semiurban:        "skews value + community — festival and regional spikes lead",
+  moms_rural:            "skews vernacular + essentials — regional-language search is the truer read"
+};
+
+function gtBar(v, col){
+  return '<div class="gt-bar" style="margin-top:5px"><div class="gt-bar-fill" style="width:'+Math.min(100,v)+'%;background:'+(col||'#4285f4')+'"></div></div>';
+}
+
 function renderGTrends(){
-  var cat=parseInt(iv("fgt"));
-  var data=(GT_CATEGORIES[cat]||GT_CATEGORIES[0]).slice(0,8);
-  var cards=data.map(function(gt){
-    var meta=SIG_META[gt.signal];
-    var sig_label=meta?meta.label:"—";
-    var pct=Math.round(gt.lift);
-    return '<div class="gt-card '+(gt.lift>70?"rising":"")+'">'+
-      '<div class="gt-query">'+gt.query+'</div>'+
-      '<div class="gt-category">'+gt.cat+' · '+gt.city+'</div>'+
-      '<div class="gt-lift">'+
-        '<div class="gt-lift-val">+'+gt.lift+'%</div>'+
-        '<div class="gt-bar"><div class="gt-bar-fill" style="width:'+Math.min(100,pct)+'%"></div></div>'+
-      '</div>'+
-      '<div class="gt-signal">Maps to: <span>'+sig_label+'</span></div>'+
+  var host=document.getElementById("gtrends-section"); if(!host) return;
+  var kw=brandLabel();
+  GTRENDS_OK=false;
+  host.innerHTML='<div class="gtrends-panel"><div class="gt-header"><div class="gt-title">'+
+    '<span class="src-dot" style="background:#4285f4;width:10px;height:10px;border-radius:50%;display:inline-block"></span> Google Trends · "'+escapeHtml(kw)+'"</div>'+
+    '<span class="gt-badge">fetching…</span></div>'+
+    '<div class="loading" style="padding:18px"><div class="spin"></div>Querying Google Trends for "'+escapeHtml(kw)+'"…</div></div>';
+  loadGTrends(kw);
+}
+
+function gtUrls(kw){
+  var qs="?keyword="+encodeURIComponent(kw)+"&city="+encodeURIComponent(iv("fcity")||"all")+"&time="+encodeURIComponent(iv("ftime")||"0");
+  var prod="/api/gtrends"+qs, dev="http://localhost:8787/api/gtrends"+qs;
+  return (location.hostname==="localhost"||location.hostname==="127.0.0.1") ? [prod,dev] : [prod];
+}
+
+function loadGTrends(kw){
+  var urls=gtUrls(kw);
+  function attempt(i){
+    if(i>=urls.length){ renderGTrendsFallback(kw,"unreachable"); return; }
+    fetch(urls[i]).then(function(r){return r.json();})
+      .then(function(j){
+        if(j && j.ok){ GTRENDS_OK=true; renderGTrendsData(j); }
+        else { renderGTrendsFallback(kw, j&&j.blocked?"blocked":"empty"); }
+      })
+      .catch(function(){ attempt(i+1); });
+  }
+  attempt(0);
+}
+
+function renderGTrendsData(j){
+  var host=document.getElementById("gtrends-section"); if(!host) return;
+  var persona=iv("fage")||"urban_gen_z";
+  var aud=audienceLabel();
+
+  // Rising queries (breakouts lead) — the headline of Google Trends.
+  var rising=(j.rising||[]).slice(0,8).map(function(q){
+    var isB=q.breakout;
+    return '<div class="gt-card '+(isB?"rising":"")+'">'+
+      '<div class="gt-query">'+escapeHtml(q.query)+'</div>'+
+      '<div class="gt-lift" style="margin-top:6px"><span class="gt-lift-val" style="color:'+(isB?'#e8453c':'#4285f4')+'">'+escapeHtml(q.change||'')+'</span></div>'+
     '</div>';
-  }).join("");
-  document.getElementById("gtrends-section").innerHTML=
-    '<div class="gtrends-panel">'+
-      '<div class="gt-header">'+
-        '<div class="gt-title"><div class="src-dot" style="background:#4285f4;width:10px;height:10px;border-radius:50%;display:inline-block"></div> Google Trends · Rising queries <span class="gt-badge">Live feed</span></div>'+
-        '<span style="font-family:var(--mono);font-size:10px;color:var(--t3)">Category: '+["Entertainment","Music + Artists","Sports","Food + Drink","Fashion + Style","Gaming"][parseInt(iv("fgt"))]+'</span>'+
-      '</div>'+
-      '<div class="gt-grid">'+cards+'</div>'+
-      '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:10px">Each rising query is classified by Claude into the signal taxonomy and injected into the signal feed. This is how Google search behaviour becomes cultural intelligence.</div>'+
+  }).join("") || '<div style="color:var(--t3);font-size:12px;padding:8px">No breakout queries for this term right now.</div>';
+
+  // Top related queries — the established context.
+  var top=(j.top||[]).slice(0,8).map(function(q){
+    return '<div class="gt-card">'+
+      '<div class="gt-query">'+escapeHtml(q.query)+'</div>'+
+      '<div class="gt-lift" style="margin-top:6px"><span class="gt-lift-val" style="color:var(--t2)">'+q.value+'</span>'+gtBar(q.value,'#7a8cff')+'</div>'+
     '</div>';
+  }).join("") || '<div style="color:var(--t3);font-size:12px;padding:8px">No related queries returned.</div>';
+
+  // Interest by region — states nationally, or cities within the selected state.
+  var maxR=(j.by_region&&j.by_region[0]&&j.by_region[0].value)||100;
+  var region=(j.by_region||[]).slice(0,10).map(function(g){
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+
+      '<span style="min-width:130px;font-size:12px;color:var(--t2)">'+escapeHtml(g.name)+'</span>'+
+      '<div style="flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.round(g.value/maxR*100)+'%;background:#4285f4;border-radius:4px"></div></div>'+
+      '<span style="font-family:var(--mono);font-size:11px;color:var(--t2);min-width:28px;text-align:right">'+g.value+'</span>'+
+    '</div>';
+  }).join("") || '<div style="color:var(--t3);font-size:12px">No regional breakdown for this term.</div>';
+
+  host.innerHTML='<div class="gtrends-panel">'+
+    '<div class="gt-header"><div class="gt-title">'+
+      '<span class="src-dot" style="background:#4285f4;width:10px;height:10px;border-radius:50%;display:inline-block"></span> Google Trends · "'+escapeHtml(j.keyword)+'"'+
+      '</div><span class="gt-badge" style="background:#1db87a22;color:#1db87a">LIVE · Google</span></div>'+
+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px">'+
+      '<div><div class="ey" style="margin-bottom:8px">📈 Rising / breakout queries</div><div class="gt-grid" style="grid-template-columns:1fr 1fr">'+rising+'</div></div>'+
+      '<div><div class="ey" style="margin-bottom:8px">🔁 Top related queries</div><div class="gt-grid" style="grid-template-columns:1fr 1fr">'+top+'</div></div>'+
+    '</div>'+
+
+    '<div style="margin-top:18px"><div class="ey" style="margin-bottom:8px">📍 Interest by '+(j.region_resolution||'region')+' · '+escapeHtml(j.geo_label||'India')+'</div>'+region+'</div>'+
+
+    // Honest audience layer — clearly OUR estimate, not Google data.
+    '<div style="margin-top:16px;padding:11px 13px;background:var(--bg3);border:1px dashed var(--b2);border-radius:10px">'+
+      '<div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:4px">CulturePulse audience read · estimated, not from Google Trends</div>'+
+      '<div style="font-size:12px;color:var(--t2)"><strong>'+escapeHtml(aud)+'</strong> '+(PERSONA_TREND_NOTE[persona]||PERSONA_TREND_NOTE.urban_gen_z)+'.</div>'+
+      '<div style="font-size:11px;color:var(--t3);margin-top:4px">Google Trends has no age/gender data — it reports search by geography and time only. Demographic fit is applied in <strong>Culture Drops</strong>.</div>'+
+    '</div>'+
+
+    '<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:10px">Live from Google Trends · geo '+escapeHtml(j.geo)+' · window '+escapeHtml(j.time_range)+(j.cached?' · cached':'')+'</div>'+
+  '</div>';
+}
+
+function renderGTrendsFallback(kw, reason){
+  var host=document.getElementById("gtrends-section"); if(!host) return;
+  var msg = reason==="blocked"
+    ? 'Google rate-limited our server (429) for this query. Google blocks datacenter IPs — this is a Trends limitation, not a data error.'
+    : reason==="empty"
+    ? 'Google Trends returned no data for "'+escapeHtml(kw)+'" in this geo/window — the term may be too niche or too new to chart.'
+    : 'Google Trends is unreachable right now.';
+  // If we have live drop evidence, show the closest live signals as honest backup.
+  var backup='';
+  if(HIER_DROPS_CACHE){
+    var ev=[];
+    (HIER_DROPS_CACHE.drops||[]).forEach(function(d){(d.level_2||[]).forEach(function(l){if(l.evidence)ev.push({q:l.name,lift:l.evidence.lift,lens:l.lens});});});
+    ev=ev.sort(function(a,b){return (b.lift||0)-(a.lift||0);}).slice(0,6);
+    if(ev.length){
+      backup='<div style="margin-top:12px"><div class="ey" style="margin-bottom:8px">Closest live cultural signals (Reddit · News · YouTube · charts)</div><div class="gt-grid">'+
+        ev.map(function(e){return '<div class="gt-card"><div class="gt-query">'+escapeHtml((e.q||'').slice(0,70))+'</div><div class="gt-signal" style="margin-top:5px"><span>'+escapeHtml(e.lens||'')+'</span></div></div>';}).join("")+
+      '</div></div>';
+    }
+  }
+  host.innerHTML='<div class="gtrends-panel">'+
+    '<div class="gt-header"><div class="gt-title"><span class="src-dot" style="background:#4285f4;width:10px;height:10px;border-radius:50%;display:inline-block"></span> Google Trends · "'+escapeHtml(kw)+'"</div>'+
+    '<span class="gt-badge" style="background:var(--adim);color:var(--amber)">'+(reason==="blocked"?"rate-limited":"no data")+'</span></div>'+
+    '<div style="font-size:12px;color:var(--t2);margin-top:8px">'+msg+'</div>'+backup+
+  '</div>';
 }
 
 /* ── TAB RENDERERS ── */
@@ -1054,8 +1160,9 @@ function renderLiveTop(data){
       al.innerHTML='<div class="alert-banner" style="border-color:var(--green);background:var(--gdim)"><div class="alert-text"><strong style="color:var(--green)">Top opportunity for '+escapeHtml(data.brand)+':</strong> "'+escapeHtml(top.level_1.name)+'" scores <strong>'+topScore+'/100 — '+escapeHtml(topVerdict)+'</strong>. '+(top.tension?escapeHtml(top.tension.statement):"")+'</div><button class="alert-dismiss" onclick="this.parentNode.remove()">Dismiss</button></div>';
     } else { al.innerHTML=""; }
   }
-  // Replace the mock Google Trends grid with the live top signals for context.
-  renderLiveSignalStrip(data);
+  // The Google Trends panel owns #gtrends-section. Only fall back to the
+  // live-signal strip there if Trends was blocked/empty (keeps it honest).
+  if(!GTRENDS_OK) renderLiveSignalStrip(data);
 }
 
 // Show the actual live signals powering this run (replaces the mock GT grid).

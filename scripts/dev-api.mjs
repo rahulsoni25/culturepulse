@@ -9,8 +9,10 @@ import qualityHandler   from "../api/agent-quality.js";
 import dropsHandler     from "../api/drops.js";
 import reviewerHandler  from "../api/agent-reviewer.js";
 import cultureScoreHandler from "../api/culture-score.js";
+import gtrendsHandler    from "../api/gtrends.js";
 
 const routes = {
+  "/api/gtrends":         gtrendsHandler,
   "/api/culture-score":   cultureScoreHandler,
   "/api/signals":         signalsHandler,
   "/api/pulse-report":    pulseReportHandler,
