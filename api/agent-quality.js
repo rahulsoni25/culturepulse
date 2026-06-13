@@ -281,36 +281,6 @@ export function runQualityAgent({ brief = {}, signals = [], brand = "Tuborg" } =
   };
 }
 
-// HTTP handler — inspectable as a standalone agent. POST a brief to get an
-// audit verdict; the dev server only exposes GET so this is mostly internal.
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "no-store");
-  if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
-
-  try {
-    // For ad-hoc inspection, run a fresh pulse-report and audit it.
-    const [{ buildSignals }, pulseModule] = await Promise.all([
-      import("./signals.js"),
-      import("./pulse-report.js"),
-    ]);
-    // Re-create a brief inline by hitting the pulse-report module's internals.
-    // For the demo handler we just produce a minimal stub showing the agent runs.
-    const signals = await buildSignals();
-    const briefStub = {
-      headline: "Demo brief — run /api/pulse-report to see real output",
-      paragraphs: ["Paragraph one.", "Paragraph two.", "Paragraph three."],
-      actOn: ["First action.", "Second action.", "Third action."],
-      citations: signals.slice(0, 5).map((s) => ({ query: s.query, signal: s.signal, lift: s.lift, source: s.source })),
-      generated_at: new Date().toISOString(),
-    };
-    const { fixed_brief, verdict } = runQualityAgent({ brief: briefStub, signals, brand: "Tuborg" });
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: true, verdict, sample_input: briefStub, sample_output: fixed_brief }));
-  } catch (err) {
-    res.statusCode = 500;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: false, error: String(err?.message || err) }));
-  }
-}
+// Module-only: consumed by api/pulse-report.js via the named export above. The
+// standalone HTTP route was removed to stay under Vercel's Hobby function
+// limit (the frontend never called it directly).

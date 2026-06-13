@@ -308,30 +308,6 @@ export function runReviewerAgent({ signals, drops, freshness }) {
   };
 }
 
-// HTTP handler for inspecting the reviewer on a fresh pipeline run.
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "no-store");
-  if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
-  try {
-    // Pull a fresh pipeline result and rate it.
-    const url = new URL(req.url || "/", "http://localhost");
-    const brand   = url.searchParams.get("brand")   || "Tuborg";
-    const persona = url.searchParams.get("persona") || "urban_gen_z";
-    const origin = req.headers?.host ? `http://${req.headers.host}` : "http://localhost:8787";
-    const r = await fetch(`${origin}/api/drops?brand=${encodeURIComponent(brand)}&persona=${encodeURIComponent(persona)}`);
-    const j = await r.json();
-    if (!j || !j.ok) throw new Error("upstream /api/drops failed");
-    // Re-pull signals to feed the rubric (drops already includes review.freshness).
-    const { buildSignals } = await import("./signals.js");
-    const signals = await buildSignals();
-    const verdict = runReviewerAgent({ signals, drops: j.drops, freshness: j.review.freshness });
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: true, ...verdict }));
-  } catch (err) {
-    res.statusCode = 500;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: false, error: String(err?.message || err) }));
-  }
-}
+// Module-only: consumed by api/drops.js via the named export above. The
+// standalone HTTP route was removed to stay under Vercel's Hobby function
+// limit (the frontend never called it directly).

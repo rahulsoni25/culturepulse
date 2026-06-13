@@ -185,24 +185,6 @@ export function runFreshnessAgent({ signals = [], brief = {} } = {}) {
   };
 }
 
-// HTTP handler — exposes the agent so it's inspectable independent of the
-// pulse-report pipeline (e.g. for monitoring, debugging, or a future
-// dashboard showing agent-runs over time).
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "no-store");
-  if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
-
-  try {
-    const { buildSignals } = await import("./signals.js");
-    const signals = await buildSignals();
-    const verdict = runFreshnessAgent({ signals, brief: { generated_at: new Date().toISOString() } });
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: true, ...verdict }));
-  } catch (err) {
-    res.statusCode = 500;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: false, error: String(err?.message || err) }));
-  }
-}
+// Module-only: consumed by api/drops.js via the named export above. The
+// standalone HTTP route was removed to stay under Vercel's Hobby function
+// limit (the frontend never called it directly).

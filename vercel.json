@@ -7,16 +7,7 @@
     "api/pulse-report.js": {
       "maxDuration": 15
     },
-    "api/agent-freshness.js": {
-      "maxDuration": 10
-    },
-    "api/agent-quality.js": {
-      "maxDuration": 10
-    },
     "api/drops.js": {
-      "maxDuration": 30
-    },
-    "api/agent-reviewer.js": {
       "maxDuration": 30
     },
     "api/culture-score.js": {

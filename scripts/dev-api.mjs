@@ -4,22 +4,20 @@
 import http from "node:http";
 import signalsHandler from "../api/signals.js";
 import pulseReportHandler from "../api/pulse-report.js";
-import freshnessHandler from "../api/agent-freshness.js";
-import qualityHandler   from "../api/agent-quality.js";
 import dropsHandler     from "../api/drops.js";
-import reviewerHandler  from "../api/agent-reviewer.js";
 import cultureScoreHandler from "../api/culture-score.js";
 import gtrendsHandler    from "../api/gtrends.js";
 
+// Note: the agent modules (freshness/quality/reviewer) are no longer standalone
+// HTTP routes — they run inside /api/drops and /api/pulse-report via named
+// exports. Their default handlers were removed to stay under Vercel's 12-function
+// Hobby limit when /api/gtrends was added.
 const routes = {
   "/api/gtrends":         gtrendsHandler,
   "/api/culture-score":   cultureScoreHandler,
   "/api/signals":         signalsHandler,
   "/api/pulse-report":    pulseReportHandler,
   "/api/drops":           dropsHandler,
-  "/api/agent-freshness": freshnessHandler,
-  "/api/agent-quality":   qualityHandler,
-  "/api/agent-reviewer":  reviewerHandler,
 };
 
 const port = parseInt(process.env.PORT || "8787", 10);
